@@ -60,7 +60,7 @@ function App() {
   // Modal State
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [patientId, setPatientId] = useState('');
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
 
   /**
    * Effect: Real-time Clock
@@ -73,13 +73,26 @@ function App() {
 
   /**
    * Handles the file selection from the input.
+   * Supports multiple files.
    * @param {Event} e - Input change event
    */
   const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      // Append new files to existing ones (or replace, depending on UX. Appending is better for 'multiple')
+      // Here we replace for simplicity as per standard upload input behavior, but allow multiple selection.
+      setFiles(Array.from(e.target.files));
     }
   };
+
+  /**
+   * Removes a specific file from the selection.
+   * @param {number} index - Index of file to remove
+   */
+  const removeFile = (index, e) => {
+    e.stopPropagation();
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
 
   /**
    * Simulates the AI Ingestion Pipeline.
@@ -94,13 +107,15 @@ function App() {
     setLogs([]);
 
     // 3. Define the simulation sequence
+    const fileCount = files.length;
     const steps = [
       { msg: 'Initializing secure edge connection...', delay: 500 },
-      { msg: `Reading input stream (${file ? file.name : 'Simulated_Scan.pdf'})...`, delay: 1200 },
+      { msg: `Ingesting ${fileCount} file(s) for Patient ${patientId || 'Unknown'}...`, delay: 1200 },
       { msg: 'vLLM Inference: Identifying Clinical Entities...', delay: 2400 },
-      { msg: 'Mapping: "bid" -> timing.repeat.frequency: 2', delay: 3500 },
-      { msg: 'Auditor: Validating against FHIR R4 Schema...', delay: 4200 },
-      { msg: 'Success: Bundle persisted to local store.', delay: 5000, done: true }
+      { msg: `Batch Processing: ${fileCount} images queued for MedGemma 1.5`, delay: 3200 },
+      { msg: 'Mapping: "bid" -> timing.repeat.frequency: 2', delay: 4000 },
+      { msg: 'Auditor: Validating against FHIR R4 Schema...', delay: 4800 },
+      { msg: 'Success: Bundle persisted to local store.', delay: 5500, done: true }
     ];
 
     // 4. Execute steps recursively with delays
@@ -134,17 +149,19 @@ function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onClick={() => setShowUploadModal(false)} // Close on background click
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           >
             <Motion.div 
               initial={{ scale: 0.95, y: 10 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 10 }}
-              className="w-full max-w-md bg-card border border-white/10 rounded-3xl shadow-2xl overflow-hidden relative"
+              onClick={(e) => e.stopPropagation()} // Prevent close when clicking inside modal
+              className="w-full max-w-lg bg-card border border-white/10 rounded-3xl shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]"
               style={{ boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}
             >
               {/* Modal Header */}
-              <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
                 <h3 className="text-lg font-semibold text-white">Upload Patient Records</h3>
                 <button 
                   onClick={() => setShowUploadModal(false)}
@@ -155,7 +172,7 @@ function App() {
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 space-y-5">
+              <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
                 
                 {/* Field: Patient ID */}
                 <div className="space-y-2">
@@ -174,28 +191,68 @@ function App() {
 
                 {/* Field: File Upload */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground ml-1">Clinical Document / Image</label>
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 mb-3 text-muted-foreground group-hover:text-primary transition-colors" />
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-semibold text-primary">Click to upload</span> or drag and drop
-                      </p>
-                      <p className="text-xs text-muted-foreground/60 mt-1">
-                        {file ? <span className="text-emerald-400 font-semibold">{file.name}</span> : "PDF, PNG, JPG or DICOM"}
-                      </p>
-                    </div>
-                    <input type="file" className="hidden" onChange={handleFileChange} />
+                  <label className="text-sm font-medium text-muted-foreground ml-1">Clinical Image/ Prescription</label>
+                  
+                  {/* Dropzone Area */}
+                  <label className="flex flex-col items-center justify-center w-full min-h-32 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group p-4 relative overflow-hidden">
+                    <input 
+                       type="file" 
+                       multiple 
+                       className="hidden" 
+                       onChange={handleFileChange} 
+                       accept="image/*,.pdf"
+                    />
+                    
+                    {files.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center pt-2 pb-3">
+                        <Upload className="w-8 h-8 mb-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-semibold text-primary">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-muted-foreground/60 mt-1">
+                          Images or PDFs (Multiple allowed)
+                        </p>
+                      </div>
+                    ) : (
+                       <div className="grid grid-cols-2 gap-3 w-full">
+                          {files.map((f, i) => (
+                             <div key={i} className="relative group/file bg-black/40 rounded-lg p-2 flex items-center gap-3 border border-white/5">
+                                {/* Thumbnail Preview */}
+                                <div className="w-12 h-12 rounded bg-white/10 shrink-0 overflow-hidden flex items-center justify-center">
+                                   {f.type.startsWith('image/') ? (
+                                      <img src={URL.createObjectURL(f)} alt="preview" className="w-full h-full object-cover opacity-80" />
+                                   ) : (
+                                      <FileText className="text-muted-foreground" size={20} />
+                                   )}
+                                </div>
+                                <div className="overflow-hidden">
+                                   <p className="text-xs text-white truncate max-w-[120px]">{f.name}</p>
+                                   <p className="text-[10px] text-muted-foreground">{(f.size / 1024).toFixed(1)} KB</p>
+                                </div>
+                                <button 
+                                   onClick={(e) => removeFile(i, e)}
+                                   className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-0.5 opacity-0 group-hover/file:opacity-100 transition-opacity shadow-md"
+                                >
+                                   <span className="block w-4 h-4 leading-3 text-center text-xs">×</span>
+                                </button>
+                             </div>
+                          ))}
+                          {/* Add more button */}
+                          <div className="flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                             <span className="text-2xl text-muted-foreground/50">+</span>
+                          </div>
+                       </div>
+                    )}
                   </label>
                 </div>
 
-                {/* Action: Submit */}
+                {/* Footer Action */}
                 <button 
                   onClick={handleSimulateProcess}
-                  disabled={!patientId || !file}
+                  disabled={!patientId || files.length === 0}
                   className="w-full py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                 >
-                  Process & Digitize
+                   {files.length > 0 ? `Process ${files.length} Record(s)` : 'Process & Digitize'}
                 </button>
 
               </div>
