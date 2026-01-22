@@ -99,37 +99,6 @@ While the interface is accessible publicly via Open WebUI for ease of use, the c
 
 ---
 
-## 🚀 Getting Started
-
-### Prerequisites
-*   Docker & Docker Compose
-*   NVIDIA GPU (for vLLM acceleration)
-
-### Installation
-
-1.  **Clone the Repository**
-    ```bash
-    git clone https://github.com/ALIENvsROBOT/challenge_kaggle.git
-    cd challenge_kaggle
-    ```
-
-2.  **Launch the vLLM Serving Engine**
-    ```bash
-    # Example command to start the vLLM container
-    docker run --gpus all -v ~/.cache/huggingface:/root/.cache/huggingface \
-        --env "HUGGING_FACE_HUB_TOKEN=<your_token>" \
-        -p 8000:8000 \
-        ipc=host \
-        vllm/vllm-openai:latest \
-        --model google/medgemma-1.5-4b
-    ```
-
-3.  **Connect Open WebUI**
-    *   Point your Open WebUI instance's API connection to your vLLM host: `http://<your-server-ip>:8000/v1`
-    *   Start interacting with the "Self-Healing" agent.
-
----
-
 ## 🔮 Future Roadmap
 
 *   **EHR Integration:** Direct adapters for Epic and Cerner (HL7 v2 over MLLP).
