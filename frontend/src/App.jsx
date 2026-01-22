@@ -20,13 +20,20 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- Mock Data ---
+/**
+ * --- MOCK DATA CONSTANTS ---
+ * Simulated backend response for recent activity stream.
+ */
 const RECENT_ACTIVITY = [
   { id: 1, type: 'Process', title: 'Lab_Results_A1C.pdf', status: 'Success', time: '2m ago' },
   { id: 2, type: 'Error', title: 'Scan_0921.jpg', status: 'Failed', time: '15m ago' },
   { id: 3, type: 'Audit', title: 'Dr_Notes_Smith.txt', status: 'Fixed', time: '1h ago' }
 ];
 
+/**
+ * --- NAVIGATION CONFIGURATION ---
+ * Sidebar menu items definition.
+ */
 const NAVIGATION = [
   { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
   { id: 'ingestion', label: 'Data Ingestion', icon: Database },
@@ -34,31 +41,75 @@ const NAVIGATION = [
   { id: 'settings', label: 'Configuration', icon: Settings },
 ];
 
+/**
+ * MedGemma Bridge - Main Application Component
+ * 
+ * This component functions as the primary dashboard for the MedGemma FHIR-Bridge.
+ * It manages the state for the UI, simulates the data ingestion pipeline, and 
+ * handles the responsive layout.
+ * 
+ * @returns {JSX.Element} The rendered dashboard application.
+ */
 function App() {
-  const [activeNav, setActiveNav] = useState('dashboard');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [logs, setLogs] = useState([]);
-  const [time, setTime] = useState(new Date().toLocaleTimeString());
+  // --- STATE MANAGEMENT ---
+  const [activeNav, setActiveNav] = useState('dashboard'); // Tracks active sidebar tab
+  const [isProcessing, setIsProcessing] = useState(false); // Controls globally processing state
+  const [logs, setLogs] = useState([]); // Stores terminal output logs
+  const [time, setTime] = useState(new Date().toLocaleTimeString()); // Real-time clock
 
+  // Modal State
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [patientId, setPatientId] = useState('');
+  const [file, setFile] = useState(null);
+
+  /**
+   * Effect: Real-time Clock
+   * Updates the top-bar clock every second.
+   */
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  /**
+   * Handles the file selection from the input.
+   * @param {Event} e - Input change event
+   */
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  /**
+   * Simulates the AI Ingestion Pipeline.
+   * This function mocks the backend latency and processing steps for demonstration.
+   */
   const handleSimulateProcess = () => {
+    // 1. Close modal if open
+    setShowUploadModal(false);
+    
+    // 2. Reset and start processing
     setIsProcessing(true);
     setLogs([]);
+
+    // 3. Define the simulation sequence
     const steps = [
       { msg: 'Initializing secure edge connection...', delay: 500 },
-      { msg: 'Reading input stream (Application/PDF)...', delay: 1200 },
+      { msg: `Reading input stream (${file ? file.name : 'Simulated_Scan.pdf'})...`, delay: 1200 },
       { msg: 'vLLM Inference: Identifying Clinical Entities...', delay: 2400 },
       { msg: 'Mapping: "bid" -> timing.repeat.frequency: 2', delay: 3500 },
       { msg: 'Auditor: Validating against FHIR R4 Schema...', delay: 4200 },
       { msg: 'Success: Bundle persisted to local store.', delay: 5000, done: true }
     ];
+
+    // 4. Execute steps recursively with delays
     let currentStep = 0;
     const runStep = () => {
-      if (currentStep >= steps.length) { setIsProcessing(false); return; }
+      if (currentStep >= steps.length) { 
+        setIsProcessing(false); 
+        return; 
+      }
       const step = steps[currentStep];
       setTimeout(() => {
         setLogs(prev => [...prev, step.msg]);
@@ -66,25 +117,109 @@ function App() {
         runStep();
       }, step.delay - (currentStep > 0 ? steps[currentStep-1].delay : 0));
     };
+    
     runStep();
   };
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans relative">
       
-      {/* Sidebar - Glassmorphism Style */}
+      {/* 
+        --- UPLOAD MODAL --- 
+        Uses AnimatePresence for smooth entry/exit transitions.
+      */}
+      <AnimatePresence>
+        {showUploadModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="w-full max-w-md bg-card border border-white/10 rounded-3xl shadow-2xl overflow-hidden relative"
+              style={{ boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}
+            >
+              {/* Modal Header */}
+              <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Upload Patient Records</h3>
+                <button 
+                  onClick={() => setShowUploadModal(false)}
+                  className="text-muted-foreground hover:text-white transition-colors p-1"
+                >
+                  <span className="text-xl">×</span>
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-5">
+                
+                {/* Field: Patient ID */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground ml-1">Patient ID</label>
+                  <div className="relative group">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
+                    <input 
+                      type="text" 
+                      value={patientId}
+                      onChange={(e) => setPatientId(e.target.value)}
+                      placeholder="e.g. PT-45922"
+                      className="w-full pl-10 pr-4 py-3 bg-secondary/50 border border-white/5 rounded-xl text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Field: File Upload */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground ml-1">Clinical Document / Image</label>
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="w-8 h-8 mb-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-semibold text-primary">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">
+                        {file ? <span className="text-emerald-400 font-semibold">{file.name}</span> : "PDF, PNG, JPG or DICOM"}
+                      </p>
+                    </div>
+                    <input type="file" className="hidden" onChange={handleFileChange} />
+                  </label>
+                </div>
+
+                {/* Action: Submit */}
+                <button 
+                  onClick={handleSimulateProcess}
+                  disabled={!patientId || !file}
+                  className="w-full py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                >
+                  Process & Digitize
+                </button>
+
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 
+        --- SIDEBAR NAVIGATION --- 
+        Main layout sidebar with glassmorphism effects.
+      */}
       <aside className="w-20 lg:w-72 glass border-r border-border/50 flex flex-col z-20 transition-all duration-300">
         <div className="p-6 flex items-center gap-4">
           <div className="relative group">
             <div className="absolute inset-0 bg-primary/40 blur-xl rounded-full group-hover:bg-primary/60 transition-all"></div>
-            <div className="relative h-12 w-12 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-2xl border border-white/10">
-              <Brain className="text-white" size={28} />
+            <div className="relative h-12 w-12 bg-gradient-to-br from-primary to-emerald-400 rounded-xl flex items-center justify-center shadow-2xl border border-white/10">
+              <Brain className="text-primary-foreground" size={28} />
             </div>
           </div>
           <div className="hidden lg:block">
             <h1 className="font-bold text-xl tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">MedGemma</h1>
             <div className="flex items-center gap-2">
-               <span className="text-[10px] uppercase font-bold tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">Edge Native</span>
+               <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20">Edge Native</span>
             </div>
           </div>
         </div>
@@ -100,11 +235,11 @@ function App() {
                 onClick={() => setActiveNav(item.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${
                   isActive 
-                    ? 'bg-primary/10 text-primary shadow-[0_0_20px_rgba(14,165,233,0.15)] ring-1 ring-primary/20' 
+                    ? 'bg-primary/10 text-primary shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-primary/20' 
                     : 'text-muted-foreground hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <Icon size={22} className={`transition-transform duration-300 ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(14,165,233,0.5)]' : 'group-hover:scale-110'}`} />
+                <Icon size={22} className={`transition-transform duration-300 ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'group-hover:scale-110'}`} />
                 <span className="hidden lg:block font-medium">{item.label}</span>
                 {isActive && <div className="absolute right-0 w-1 h-8 bg-primary rounded-l-full blur-[2px]"></div>}
               </button>
@@ -112,7 +247,7 @@ function App() {
           })}
         </nav>
 
-        {/* User Profile */}
+        {/* User Profile Card */}
         <div className="p-4 m-4 rounded-2xl bg-gradient-to-br from-white/5 to-white/0 border border-white/5 backdrop-blur-md">
           <div className="flex items-center gap-3">
              <div className="relative">
@@ -131,7 +266,10 @@ function App() {
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* 
+        --- MAIN CONTENT AREA --- 
+        Contains the header, dashboard stats, and terminal output.
+      */}
       <main className="flex-1 flex flex-col relative overflow-hidden">
         
         {/* Ambient Background Glow (Softer, Warmer) */}
@@ -143,7 +281,7 @@ function App() {
           <div className="flex items-center gap-6">
             <h2 className="text-2xl font-bold text-white tracking-tight">Workspace</h2>
              <div className="h-6 w-px bg-white/10"></div>
-             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-white/5 px-3 py-1.5 rounded-lg border border-white/white/5">
                 <Clock size={14} className="text-primary" />
                 <span className="font-mono">{time}</span>
              </div>
@@ -177,8 +315,10 @@ function App() {
                    The system is ready. <span className="text-white font-medium">3 active patient streams</span> require your attention.
                 </p>
              </div>
+             
+             {/* Primary Action Button (Opens Modal) */}
              <button 
-                onClick={handleSimulateProcess}
+                onClick={() => setShowUploadModal(true)}
                 disabled={isProcessing}
                 className="group relative px-8 py-4 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-3"
              >
@@ -191,9 +331,9 @@ function App() {
           {/* Stats Grid - Cleaner, Friendlier */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
              {[
-               { label: 'Avg. Response Time', value: '38ms', unit: 'Edge Inference', icon: Zap, color: 'text-warning' },
-               { label: 'Cases Processed', value: '1,240', unit: 'Last 24 hours', icon: ShieldCheck, color: 'text-success' },
-               { label: 'AI Confidence Score', value: '99.4%', unit: 'Autonomous Grading', icon: Brain, color: 'text-primary' },
+               { label: 'Active Model', value: 'MedGemma 1.5-4b', unit: 'Google / DeepMind', icon: Brain, color: 'text-primary' },
+               { label: 'Standard', value: 'HL7 FHIR R4', unit: 'Interoperability', icon: ShieldCheck, color: 'text-success' },
+               { label: 'Platform', value: 'Edge Native', unit: 'Local Inference', icon: Zap, color: 'text-warning' },
              ].map((stat, i) => (
                 <motion.div 
                    key={i}
@@ -208,13 +348,13 @@ function App() {
                       <div className={`p-3 rounded-2xl bg-white/5 border border-white/5 ${stat.color}`}>
                          <stat.icon size={26} />
                       </div>
-                      <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full border border-emerald-400/20">Optimal</span>
+                      <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full border border-emerald-400/20">Online</span>
                    </div>
                    
                    <div>
-                      <div className="text-3xl font-bold text-white mb-1 tracking-tight">{stat.label === 'Avg. Response Time' ? <span className="font-mono">{stat.value}</span> : stat.value}</div>
+                      <div className="text-2xl font-bold text-white mb-1 tracking-tight">{stat.value}</div>
                       <div className="text-sm text-muted-foreground flex items-center gap-1">
-                         {stat.unit}
+                         <span className="font-semibold text-white/50">{stat.label}:</span> {stat.unit} 
                       </div>
                    </div>
                 </motion.div>
