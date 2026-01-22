@@ -1,0 +1,11 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+
+# Environment (Very Important: Don't bake secrets into the image!)
+.env
+.venv
