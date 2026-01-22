@@ -14,7 +14,7 @@
 
 ---
 
-## 📑 Executive Summary
+## Executive Summary
 
 The **MedGemma FHIR-Bridge** is an enterprise-grade interoperability engine designed to resolve the healthcare industry's "Dark Data" crisis. It functions as a semantic bridge between unstructured analog records (handwritten progress notes, faxed lab results, legacy paper charts) and the **HL7 FHIR (Fast Healthcare Interoperability Resources)** digital standard.
 
@@ -22,7 +22,7 @@ By orchestrating **MedGemma 1.5 (4B)** within a recursive, deterministic validat
 
 ---
 
-## 📉 The Problem: The Interoperability Gap
+## The Problem: The Interoperability Gap
 
 Despite billions invested in EHRs, healthcare remains fragmented.
 
@@ -30,7 +30,7 @@ Despite billions invested in EHRs, healthcare remains fragmented.
 - **Manual Bottlenecks:** Clinical staff spend hours manually transcribing data, a process prone to typo-induced medical errors.
 - **Privacy Latency:** Cloud-based extraction services introduce unacceptable privacy risks (PII leakage) and latency.
 
-## 💡 The Solution: A Self-Healing Edge Architecture
+## The Solution: A Self-Healing Edge Architecture
 
 Our solution deploys a local-first, agentic pipeline that treats medical data extraction as a multi-step engineering problem rather than a simple text generation task.
 
@@ -84,7 +84,7 @@ sequenceDiagram
 
 ---
 
-## 🛠️ Technical Stack
+## Technical Stack
 
 This project is engineered for **universal accessibility** and **high-performance inference**.
 
@@ -98,7 +98,7 @@ This project is engineered for **universal accessibility** and **high-performanc
 
 ---
 
-## 🔒 Privacy & Compliance (Hybrid Edge/Access)
+## Privacy & Compliance (Hybrid Edge/Access)
 
 While the interface is accessible via a custom React frontend for ease of use, the core inference engine (MedGemma via vLLM) can be deployed in a **private cloud or on-premise GPU server**.
 
@@ -107,7 +107,7 @@ While the interface is accessible via a custom React frontend for ease of use, t
 
 ---
 
-## 🔮 Future Roadmap
+## Future Roadmap
 
 - **EHR Integration:** Direct adapters for Epic and Cerner (HL7 v2 over MLLP).
 - **Batch Processing:** Queue system for bulk ingestion of legacy archives.
