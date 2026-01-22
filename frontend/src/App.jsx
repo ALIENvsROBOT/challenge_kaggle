@@ -18,7 +18,7 @@ import {
   BarChart3,
   LayoutDashboard
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 
 /**
  * --- MOCK DATA CONSTANTS ---
@@ -130,13 +130,13 @@ function App() {
       */}
       <AnimatePresence>
         {showUploadModal && (
-          <motion.div 
+          <Motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           >
-            <motion.div 
+            <Motion.div 
               initial={{ scale: 0.95, y: 10 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 10 }}
@@ -199,8 +199,8 @@ function App() {
                 </button>
 
               </div>
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
 
@@ -335,7 +335,7 @@ function App() {
                { label: 'Standard', value: 'HL7 FHIR R4', unit: 'Interoperability', icon: ShieldCheck, color: 'text-success' },
                { label: 'Platform', value: 'Edge Native', unit: 'Local Inference', icon: Zap, color: 'text-warning' },
              ].map((stat, i) => (
-                <motion.div 
+                <Motion.div 
                    key={i}
                    initial={{ opacity: 0, y: 20 }}
                    animate={{ opacity: 1, y: 0 }}
@@ -357,7 +357,7 @@ function App() {
                          <span className="font-semibold text-white/50">{stat.label}:</span> {stat.unit} 
                       </div>
                    </div>
-                </motion.div>
+                </Motion.div>
              ))}
           </div>
 
@@ -391,7 +391,7 @@ function App() {
                    )}
                    <AnimatePresence>
                       {logs.map((log, index) => (
-                         <motion.div 
+                         <Motion.div 
                             key={index}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -404,10 +404,10 @@ function App() {
                             <span className={log.includes("Error") ? "text-destructive" : log.includes("Success") ? "text-success font-semibold" : "text-gray-300"}>
                                {log}
                             </span>
-                         </motion.div>
+                         </Motion.div>
                       ))}
                       {isProcessing && (
-                         <motion.div
+                         <Motion.div
                            className="w-2 h-4 bg-primary/80"
                            animate={{ opacity: [1, 0] }}
                            transition={{ duration: 0.8, repeat: Infinity }}
