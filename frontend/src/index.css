@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Human-Centered 'Calm Health' Theme (Zinc + Emerald) */
+    /* Background: Neutral Zinc (less blue fatigue) */
+    --background: 240 10% 4%; 
+    --foreground: 240 10% 98%;
+
+    /* Card: Lighter Zinc for better contrast (Lite Mode feel in Dark Mode) */
+    --card: 240 6% 14%; /* Increased lightness from 7% to 14% */
+    --card-foreground: 240 10% 98%;
+
+    /* Popover */
+    --popover: 240 10% 12%;
+    --popover-foreground: 240 10% 98%;
+
+    /* Primary: Emerald (Health, Safety, Calm) - replaced Electric Blue */
+    --primary: 158 64% 52%; 
+    --primary-foreground: 144 65% 5%;
+
+    /* Secondary: Warm Grey Surface */
+    --secondary: 240 4% 18%;
+    --secondary-foreground: 240 5% 96%;
+
+    /* Muted: De-emphasized UI elements */
+    --muted: 240 4% 18%;
+    --muted-foreground: 240 5% 65%;
+
+    /* Accent: Soft Violet for subtle delight (secondary action) */
+    --accent: 267 83% 80%;
+    --accent-foreground: 267 83% 10%;
+
+    /* Semantic States */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 4% 20%; /* Lighter borders */
+    --input: 240 4% 18%;
+    --ring: 158 64% 52%; /* Focus ring matches Primary */
+
+    --radius: 1rem; /* Softer, friendlier corners */
+    
+    --success: 142 71% 45%;
+    --warning: 35 92% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary selection:text-white;
+  }
+}
+
+/* Glassmorphism Utilities */
+@layer utilities {
+  .glass {
+    /* Lighter glass effect */
+    @apply bg-white/[0.08] backdrop-blur-xl border border-white/10 shadow-lg;
+  }
+  .glass-card {
+    /* Lighter card gradient */
+    @apply bg-gradient-to-br from-white/[0.09] to-white/[0.04] backdrop-blur-lg border border-white/10;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent; 
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors; 
+}
