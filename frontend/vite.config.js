@@ -1,7 +1,15 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
+/**
+ * Vite Configuration
+ * 
+ * Configures the build tool and development server.
+ * - Uses @vitejs/plugin-react for Fast Refresh and JSX support.
+ * - Defines build output and proxy rules (if backend integration logic is added later).
+ * 
+ * @see https://vitejs.dev/config/
+ */
 export default defineConfig({
   plugins: [react()],
 })

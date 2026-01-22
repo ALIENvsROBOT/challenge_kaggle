@@ -1,4 +1,13 @@
 /** @type {import('tailwindcss').Config} */
+/**
+ * Tailwind CSS Configuration
+ * 
+ * Defines the design system tokens for the MedGemma Bridge application.
+ * - Maps CSS variables (from index.css) to Tailwind utility classes.
+ * - Extends the default theme with project-specific fonts (Inter, JetBrains Mono) and animations.
+ * 
+ * This configuration enables the "Human-Centered" dark mode theme.
+ */
 export default {
   content: [
     "./index.html",
@@ -6,6 +15,7 @@ export default {
   ],
   theme: {
     extend: {
+      // Color Palette Mapping (Refer to src/index.css for HSL values)
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

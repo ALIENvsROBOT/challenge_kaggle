@@ -281,7 +281,7 @@ function App() {
           <div className="flex items-center gap-6">
             <h2 className="text-2xl font-bold text-white tracking-tight">Workspace</h2>
              <div className="h-6 w-px bg-white/10"></div>
-             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-white/5 px-3 py-1.5 rounded-lg border border-white/white/5">
+             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
                 <Clock size={14} className="text-primary" />
                 <span className="font-mono">{time}</span>
              </div>

@@ -11,6 +11,8 @@
 
 > **Submission Category:** Agentic / Edge
 > **Core Innovation:** Self-Correcting "Human-in-the-Loop" Architecture running entirely on-device.
+>
+> 📚 **[Frontend Setup Guide](docs/frontend_setup.md)** | **[Python/Backend Setup](docs/setup.md)**
 
 ---
 
