@@ -1,3 +1,6 @@
+# ⚠️ WORK IN PROGRESS: DUMMY README / CONCEPT DRAFT ⚠️
+> **Note:** This documentation serves as a conceptual prototype. Implementation details and architectural specifics are currently placeholders and subject to change.
+
 # MedGemma FHIR-Bridge: Autonomous Medical Data Standardization Pipeline
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
