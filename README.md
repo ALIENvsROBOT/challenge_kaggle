@@ -109,6 +109,60 @@ While the interface is accessible via a custom React frontend for ease of use, t
 
 ---
 
+## vLLM MedGemma Configuration
+
+To serve the MedGemma 1.5 model using vLLM in a Podman container on Ubuntu, use the following configuration script. This setup ensures persistent model storage and an OpenAI-compatible API endpoint.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+###############################################################################
+# vLLM MedGemma 1.5 on Ubuntu (Podman) – OpenAI-compatible API
+# - Downloads model to host dir (persistent)
+# - Runs vLLM serving the local model (so rm/stop container won’t delete weights)
+###############################################################################
+
+# 1) Credentials (set your real values)
+export HF_TOKEN="hf_xxxxxxxxxxxxxxxxxxxxx"
+export VLLM_API_KEY="super-secret-key-change-me"
+
+# 2) Where to store the model on the host (persistent)
+MODEL_DIR="/home/compute/models/medgemma-1.5-4b-it"
+mkdir -p "$MODEL_DIR"
+
+# 3) Download model to the host (requires huggingface-cli or python + huggingface_hub)
+export HUGGING_FACE_HUB_TOKEN="$HF_TOKEN"
+huggingface-cli download google/medgemma-1.5-4b-it --local-dir "$MODEL_DIR"
+
+# 4) Stop/remove old container if present (safe; model stays in MODEL_DIR)
+sudo podman stop vllm-medgemma 2>/dev/null || true
+sudo podman rm vllm-medgemma 2>/dev/null || true
+
+# 5) Run vLLM serving the LOCAL model directory
+sudo podman run -d --name vllm-medgemma \
+  --pull=always \
+  --restart always \
+  --device nvidia.com/gpu=all \
+  --security-opt=label=disable \
+  --ipc=host \
+  -p 8001:8000 \
+  -v "$MODEL_DIR":/model:Z \
+  -e VLLM_API_KEY="$VLLM_API_KEY" \
+  -e NCCL_P2P_DISABLE=1 \
+  docker.io/vllm/vllm-openai:latest \
+  /model \
+  --served-model-name google/medgemma-1.5-4b-it \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --dtype bfloat16 \
+  --max-model-len 8192 \
+  --gpu-memory-utilization 0.30 \
+  --limit-mm-per-prompt '{"image": 8}'
+```
+
+---
+
 ## Future Roadmap
 
 - **EHR Integration:** Direct adapters for Epic and Cerner (HL7 v2 over MLLP).
