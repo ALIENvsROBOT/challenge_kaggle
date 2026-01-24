@@ -163,6 +163,16 @@ sudo podman run -d --name vllm-medgemma \
 
 ---
 
+## Datasets Used
+
+This project utilizes the following datasets for training and validation of the prescription analysis capabilities:
+
+1. **Bajaj Dataset**: [Link](https://www.kaggle.com/datasets/dikshaasinghhh/bajaj)
+2. **Medical Prescription Dataset**: [Link](https://www.kaggle.com/datasets/bokhnhl/medical-prescription-dataset)
+3. **Illegible Medical Prescription Images Dataset**: [Link](https://www.kaggle.com/datasets/mehaksingal/illegible-medical-prescription-images-dataset)
+
+---
+
 ## Future Roadmap
 
 - **EHR Integration:** Direct adapters for Epic and Cerner (HL7 v2 over MLLP).
