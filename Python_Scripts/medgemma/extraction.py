@@ -1,3 +1,19 @@
+"""
+Extraction Logic Module
+
+This module handles the core "Business Logic" of converting raw string output from the LLM
+into structured, normalized, and clinically safe data dictionaries.
+
+Key Responsibilities:
+1. Prompt Construction: Building strict instructions for the LLM.
+2. Parsing: Converting TSV/JSON strings into Python objects.
+3. Normalization: Mapping raw units/names to standard formats (e.g. "mill/cmm" -> "mill/mm3").
+4. "Self-Healing": The `sanitize_extraction` function contains critical safety logic to
+   override LLM hallucinations, specifically regarding:
+   - Platelet Count Scaling (correcting 10^3 shorthand).
+   - Absolute Count verification (cross-checking WBC * % vs Abs).
+   - Patient Name cleanup.
+"""
 import os
 from typing import Any, Dict, List, Optional
 
@@ -344,6 +360,8 @@ def sanitize_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
             n = "MPV"
             cleaned["name"] = n
 
+
+
         inferred = infer_unit_by_name(n)
         if inferred:
             if unit is None or normalize_unit(unit) != inferred:
@@ -379,6 +397,20 @@ def sanitize_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
                     cleaned["ref_high"] = high_parts.get("value")
                     if not cleaned.get("unit") and high_parts.get("unit"):
                         cleaned["unit"] = normalize_unit(high_parts.get("unit"))
+
+        # Fix Platelet Count scaling (e.g. 370 -> 370,000 if unit is /uL)
+        # Labs often report 370 10^3/uL, but if unit is scraped as /uL, it's 1000x off.
+        if "platelet count" in n.lower() and (unit == "/uL" or unit is None):
+             v = cleaned.get("value")
+             if isinstance(v, (int, float)) and 0 < v < 1000:
+                  cleaned["value"] = v * 1000.0
+                  # Fix ranges too if they match the scale
+                  if isinstance(cleaned.get("ref_low"), (int, float)) and cleaned["ref_low"] < 1000:
+                       cleaned["ref_low"] = cleaned["ref_low"] * 1000.0
+                  if isinstance(cleaned.get("ref_high"), (int, float)) and cleaned["ref_high"] < 1000:
+                       cleaned["ref_high"] = cleaned["ref_high"] * 1000.0
+                  # Force re-calculation of flag since values changed
+                  flag = None
 
         if isinstance(flag, str) and flag.strip().upper() in {"H", "L"}:
             cleaned["flag"] = flag.strip().upper()

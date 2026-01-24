@@ -1,3 +1,11 @@
+"""
+Structured Output Schema Module
+
+This module defines the JSON Schema used to force the LLM to output valid FHIR R4 Bundle structures
+when operating in 'structured output' mode.
+
+The schema complies with OpenAI's 'Strict Structured Outputs' subset of JSON Schema.
+"""
 from typing import Any, Dict
 
 FHIR_BUNDLE_SCHEMA: Dict[str, Any] = {

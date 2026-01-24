@@ -1,3 +1,15 @@
+"""
+MedGemma API Client Module
+
+This module provides a robust, production-ready HTTP client for interacting with the
+MedGemma model (served via vLLM or OpenAI-compatible endpoints).
+
+Key Features:
+1. **Multimodal Support:** Automatically handles image encoding (Base64) and MIME type detection.
+2. **Resilience:** Implements connection pooling (via `requests.Session`) and error handling.
+3. **Flexibility:** Supports dynamic system prompts, structured output schemas, and custom timeouts.
+4. **Environment Management:** Automatically loads configuration from `.env` files in parent directories.
+"""
 import base64
 import json
 import logging

@@ -1,3 +1,14 @@
+"""
+FHIR Conversion Module
+
+This module ensures that internal data structures are compliant with HL7 FHIR R4 standards
+before they are serialized.
+
+Key Features:
+- `validate_bundle_minimal`: A lightweight validator ensuring required fields (id, resourceType) exist.
+- `bundle_from_extraction`: Maps the internal "normalized" dictionary to nested FHIR resources.
+- Strict Type Checking: Ensures `valueQuantity` and `code` follow the specific nesting required by FHIR.
+"""
 import os
 from typing import Any, Dict, List
 

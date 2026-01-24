@@ -1,3 +1,14 @@
+"""
+Utility Functions Module
+
+This module contains stateless helper functions for text parsing, unit normalization,
+and string cleanup.
+
+Key Functions:
+- `normalize_unit`: Standardizes varied unit strings (e.g. "mill/cumm", "mill/mm3") into a canonical format.
+- `infer_unit_by_name`: Provides a "Knowledge Base" of expected units for common CBC tests.
+- `split_value_unit`: Regex-based parser to separate "12.5 g/dL" into {"value": 12.5, "unit": "g/dL"}.
+"""
 from typing import Any, Dict, Optional
 
 

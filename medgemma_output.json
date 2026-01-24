@@ -630,17 +630,17 @@
           "reference": "Patient/patient-1"
         },
         "valueQuantity": {
-          "value": 370.0,
+          "value": 370000.0,
           "unit": "/uL"
         },
         "referenceRange": [
           {
             "low": {
-              "value": 150.0,
+              "value": 150000.0,
               "unit": "/uL"
             },
             "high": {
-              "value": 450.0,
+              "value": 450000.0,
               "unit": "/uL"
             }
           }
