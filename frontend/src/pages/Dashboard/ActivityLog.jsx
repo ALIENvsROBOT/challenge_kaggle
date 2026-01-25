@@ -42,7 +42,7 @@ const ActivityLog = ({ logs, isProcessing }) => {
           </div>
         )}
         <AnimatePresence>
-          {logs.map((log, index) => (
+          {[...logs].reverse().map((log, index) => (
             <Motion.div 
               key={`${log.time}-${index}`}
               initial={{ opacity: 0, x: -10 }}

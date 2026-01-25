@@ -45,7 +45,6 @@ function App() {
   const handleStartProcess = async (patientId, files) => {
     setShowUploadModal(false);
     setIsProcessing(true);
-    // Removed setLogs([]) to keep them persistent as requested
 
     // Get or Provision API Key
     const activeKeyObj = autoProvisionApiKey();
