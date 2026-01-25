@@ -40,6 +40,8 @@ services:
         condition: service_healthy
     networks:
       - medgemma_prod_net
+    volumes:
+      - ./uploaded_files:/app/uploaded_files
 
   # ---------------------------------------------------------------------------
   # Frontend (Nginx Serving Static Files)
