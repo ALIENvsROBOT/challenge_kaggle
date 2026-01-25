@@ -428,6 +428,7 @@ def sanitize_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
 
         cleaned_obs.append(cleaned)
 
+
     # De-duplicate rows: prefer entries whose unit matches expected unit
     deduped: Dict[str, Dict[str, Any]] = {}
     for o in cleaned_obs:

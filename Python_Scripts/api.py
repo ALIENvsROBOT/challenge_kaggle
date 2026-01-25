@@ -30,19 +30,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Internal Modules
-from medgemma.client import MedGemmaClient
-from medgemma.extraction import (
+from Python_Scripts.medgemma.client import MedGemmaClient
+from Python_Scripts.medgemma.extraction import (
     build_extraction_prompt, 
     sanitize_extraction, 
     validate_extraction
 )
-from medgemma.fhir import (
+from Python_Scripts.medgemma.fhir import (
     bundle_from_extraction, 
     sanitize_bundle, 
     ensure_interpretation_from_range, 
     validate_bundle_minimal
 )
-from medgemma.utils import extract_json_candidate
+from Python_Scripts.medgemma.utils import extract_json_candidate
 
 # --- Configuration ---
 API_TITLE = "MedGemma FHIR-Bridge API"
@@ -151,11 +151,40 @@ def process_file_sync(file_path: Path) -> Dict[str, Any]:
                 
             # 2. Parse & Extract
             candidate = extract_json_candidate(response)
+            logger.info(f"LLM Raw Output: {candidate[:500]}...") # Log first 500 chars
+
+            extraction = None
+            
+            # A. Try standard JSON
             try:
                 extraction = json.loads(candidate)
             except json.JSONDecodeError:
-                # Fallback purely for robustness; real system might retry here
-                raise ValueError("MedGemma returned malformed JSON.")
+                pass
+                
+            # B. Try TSV (Common in Strict Mode)
+            if not extraction:
+                from Python_Scripts.medgemma.extraction import parse_tsv_extraction
+                # Basic check if it looks like TSV (has tabs and lines)
+                if "\t" in candidate or "\n" in candidate:
+                    extraction = parse_tsv_extraction(candidate)
+            
+            # C. Try Python AST (Last resort)
+            if not extraction:
+                import ast
+                try:
+                    candidates_eval = ast.literal_eval(candidate)
+                    if isinstance(candidates_eval, dict):
+                        extraction = candidates_eval
+                except (ValueError, SyntaxError):
+                    pass
+            
+            # D. Final Safety Net (Mock if enabled or completely failed)
+            if not extraction:
+                logger.error(f"Failed to parse ANY format. Raw: {candidate}")
+                # As requested: "I need green signal". If parsing fails entirely, return mock for demo.
+                # In prod, we'd raise ValueError. For this demo, we can optionally enable mock.
+                # But let's raise error first to see if TSV fix works.
+                raise ValueError("MedGemma output could not be parsed as JSON or TSV.")
             
             # 3. Sanitize (Self-Healing Logic)
             extraction = sanitize_extraction(extraction)

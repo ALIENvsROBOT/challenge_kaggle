@@ -19,6 +19,7 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
+import { useDropzone } from 'react-dropzone';
 import ConfigurationPage from './pages/ConfigurationPage';
 
 /**
@@ -77,13 +78,25 @@ function App() {
    * Supports multiple files.
    * @param {Event} e - Input change event
    */
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      // Append new files to existing ones (or replace, depending on UX. Appending is better for 'multiple')
-      // Here we replace for simplicity as per standard upload input behavior, but allow multiple selection.
-      setFiles(Array.from(e.target.files));
+  /**
+   * React Dropzone Configuration
+   * Professional-grade file handling with drag & drop support.
+   */
+  const onDrop = (acceptedFiles) => {
+    if (acceptedFiles?.length > 0) {
+      setFiles(acceptedFiles);
     }
   };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': [],
+      'application/pdf': []
+    },
+    multiple: true
+  });
+
 
   /**
    * Removes a specific file from the selection.
@@ -99,42 +112,99 @@ function App() {
    * Simulates the AI Ingestion Pipeline.
    * This function mocks the backend latency and processing steps for demonstration.
    */
-  const handleSimulateProcess = () => {
-    // 1. Close modal if open
+
+  /**
+   * Real AI Ingestion Pipeline
+   * Connects to Python Backend via /api/v1/ingest
+   */
+  const handleRealProcess = async () => {
+    // 1. Initial Checks
     setShowUploadModal(false);
-    
-    // 2. Reset and start processing
     setIsProcessing(true);
     setLogs([]);
 
-    // 3. Define the simulation sequence
-    const fileCount = files.length;
-    const steps = [
-      { msg: 'Initializing secure edge connection...', delay: 500 },
-      { msg: `Ingesting ${fileCount} file(s) for Patient ${patientId || 'Unknown'}...`, delay: 1200 },
-      { msg: 'vLLM Inference: Identifying Clinical Entities...', delay: 2400 },
-      { msg: `Batch Processing: ${fileCount} images queued for MedGemma 1.5`, delay: 3200 },
-      { msg: 'Mapping: "bid" -> timing.repeat.frequency: 2', delay: 4000 },
-      { msg: 'Auditor: Validating against FHIR R4 Schema...', delay: 4800 },
-      { msg: 'Success: Bundle persisted to local store.', delay: 5500, done: true }
-    ];
-
-    // 4. Execute steps recursively with delays
-    let currentStep = 0;
-    const runStep = () => {
-      if (currentStep >= steps.length) { 
-        setIsProcessing(false); 
-        return; 
-      }
-      const step = steps[currentStep];
-      setTimeout(() => {
-        setLogs(prev => [...prev, step.msg]);
-        currentStep++;
-        runStep();
-      }, step.delay - (currentStep > 0 ? steps[currentStep-1].delay : 0));
+    const log = (msg) => {
+        // Capture timestamp at event time
+        const time = new Date().toLocaleTimeString('en-US', {hour12:false});
+        setLogs(prev => [...prev, { message: msg, time }]);
     };
     
-    runStep();
+    
+    // Get Credentials (with Auto-Provisioning for Demo)
+    let keys = JSON.parse(localStorage.getItem('medgemma_api_keys') || '[]');
+    
+    // Auto-generate key if missing (Critical for seamless demo)
+    if (keys.length === 0) {
+        const newKey = {
+            id: crypto.randomUUID(),
+            name: 'Auto-Generated Demo Key',
+            key: 'sk-' + Array.from(crypto.getRandomValues(new Uint8Array(24)))
+                .map(b => b.toString(16).padStart(2, '0')).join(''),
+            created: new Date().toISOString(),
+            role: 'Internal'
+        };
+        keys = [newKey];
+        localStorage.setItem('medgemma_api_keys', JSON.stringify(keys));
+        log("System: Auto-provisioned new API Access Key.");
+    }
+    
+    const activeKey = keys[0].key;
+
+    if (!activeKey) {
+        // Should never happen now due to auto-gen above, but good for safety
+        log("Error: API Key provisioning failed.");
+        setIsProcessing(false);
+        return;
+    }
+
+    try {
+        log(`Initializing secure session for Patient: ${patientId}...`);
+        
+        // 2. Prepare Payload
+        const formData = new FormData();
+        formData.append('patient_id', patientId);
+        // Currently API supports 1 file per request, we take the first one
+        if (files.length > 0) {
+            formData.append('file', files[0]);
+            log(`Uploading file: ${files[0].name} (${(files[0].size/1024).toFixed(1)} KB)...`);
+        } else {
+             throw new Error("No files selected");
+        }
+
+        // 3. API Call
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        log(`Connecting to Edge Service at ${API_URL}...`);
+        
+        const response = await fetch(`${API_URL}/api/v1/ingest`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${activeKey}`
+                // Content-Type map is automatic with FormData
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Server Error (${response.status}): ${errorText}`);
+        }
+
+        log("vLLM Inference: Processing MedGemma 4B model...");
+        const result = await response.json();
+        
+        // 4. Handle Success
+        log("Validating FHIR R4 Bundles...");
+        console.log("FHIR Result:", result.fhir_bundle);
+        
+        log(`Success: Bundle ${result.submission_id.slice(0,8)} persisted.`);
+        log(`Patient ID: ${result.patient_id} updated.`);
+
+    } catch (error) {
+        log(`Critical Error: ${error.message}`);
+        console.error(error);
+    } finally {
+        setIsProcessing(false);
+    }
   };
 
   return (
@@ -195,18 +265,19 @@ function App() {
                   <label className="text-sm font-medium text-muted-foreground ml-1">Clinical Image/ Prescription</label>
                   
                   {/* Dropzone Area */}
-                  <label className="flex flex-col items-center justify-center w-full min-h-32 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group p-4 relative overflow-hidden">
-                    <input 
-                       type="file" 
-                       multiple 
-                       className="hidden" 
-                       onChange={handleFileChange} 
-                       accept="image/*,.pdf"
-                    />
+                  <div 
+                    {...getRootProps()}
+                    className={`flex flex-col items-center justify-center w-full min-h-32 border-2 border-dashed rounded-xl cursor-pointer transition-all group p-4 relative overflow-hidden outline-none ${
+                        isDragActive 
+                        ? 'border-primary bg-primary/10 scale-[1.02] shadow-xl' 
+                        : 'border-white/10 hover:border-primary/50 hover:bg-primary/5'
+                    }`}
+                  >
+                    <input {...getInputProps()} />
                     
                     {files.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center pt-2 pb-3">
-                        <Upload className="w-8 h-8 mb-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <div className="flex flex-col items-center justify-center pt-2 pb-3 pointer-events-none">
+                        <Upload className={`w-8 h-8 mb-3 transition-colors ${isDragActive ? 'text-primary scale-110' : 'text-muted-foreground group-hover:text-primary'}`} />
                         <p className="text-sm text-muted-foreground">
                           <span className="font-semibold text-primary">Click to upload</span> or drag and drop
                         </p>
@@ -244,12 +315,12 @@ function App() {
                           </div>
                        </div>
                     )}
-                  </label>
+                  </div>
                 </div>
 
                 {/* Footer Action */}
                 <button 
-                  onClick={handleSimulateProcess}
+                  onClick={handleRealProcess}
                   disabled={!patientId || files.length === 0}
                   className="w-full py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                 >
@@ -458,12 +529,12 @@ function App() {
                             animate={{ opacity: 1, x: 0 }}
                             className="flex gap-3"
                          >
-                            <span className="text-muted-foreground/40 select-none shrink-0">
-                               {new Date().toLocaleTimeString('en-US', {hour12:false})}
+                            <span className="text-muted-foreground/40 select-none shrink-0 font-mono text-xs pt-1">
+                               {log.time}
                             </span>
                             <span className="text-primary shrink-0">➜</span>
-                            <span className={log.includes("Error") ? "text-destructive" : log.includes("Success") ? "text-success font-semibold" : "text-gray-300"}>
-                               {log}
+                            <span className={log.message.includes("Error") ? "text-destructive" : log.message.includes("Success") ? "text-success font-semibold" : "text-gray-300"}>
+                               {log.message}
                             </span>
                          </Motion.div>
                       ))}

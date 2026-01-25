@@ -16,30 +16,30 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ConfigurationPage = () => {
-  const [apiKeys, setApiKeys] = useState([]);
+  // Lazy init state from localStorage to avoid sync SetState in effect
+  const [apiKeys, setApiKeys] = useState(() => {
+    const savedKeys = localStorage.getItem('medgemma_api_keys');
+    if (savedKeys) {
+      const keys = JSON.parse(savedKeys);
+      if (keys.length > 0) return keys;
+    }
+    
+    // Auto-generate a default key for the frontend to use immediately
+    const defaultKey = {
+      id: crypto.randomUUID(),
+      name: 'Frontend Client',
+      key: 'sk-' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0')).join(''),
+      created: new Date().toISOString(),
+      role: 'Internal'
+    };
+    localStorage.setItem('medgemma_api_keys', JSON.stringify([defaultKey]));
+    return [defaultKey];
+  });
+  
   const [copiedId, setCopiedId] = useState(null);
   const [visibleKeyId, setVisibleKeyId] = useState(null);
   const [showConfirmReplace, setShowConfirmReplace] = useState(false);
-
-  // Load keys from localStorage on mount
-  useEffect(() => {
-    const savedKeys = localStorage.getItem('medgemma_api_keys');
-    if (savedKeys) {
-      setApiKeys(JSON.parse(savedKeys));
-    } else {
-      // Default initial key for demonstration
-      const initialKey = {
-        id: crypto.randomUUID(),
-        name: 'Default Client',
-        key: 'sk-' + Array.from(crypto.getRandomValues(new Uint8Array(24)))
-          .map(b => b.toString(16).padStart(2, '0')).join(''),
-        created: new Date().toISOString(),
-        role: 'Admin'
-      };
-      setApiKeys([initialKey]);
-      localStorage.setItem('medgemma_api_keys', JSON.stringify([initialKey]));
-    }
-  }, []);
 
   const handleGenerateClick = () => {
     if (apiKeys.length > 0) {
