@@ -11,9 +11,9 @@ const UploadModal = ({ show, onClose, onStartProcess }) => {
     if (acceptedFiles?.length > 0) {
       setFiles(prev => {
         const combined = [...prev, ...acceptedFiles];
-        if (combined.length > 5) {
-          alert("Maximum 5 images allowed per session.");
-          return combined.slice(0, 5);
+        if (combined.length > 8) {
+          alert("Maximum 8 images allowed per session.");
+          return combined.slice(0, 8);
         }
         return combined;
       });
@@ -102,7 +102,7 @@ const UploadModal = ({ show, onClose, onStartProcess }) => {
                         <span className="font-semibold text-primary">Click to upload</span> or drag and drop
                       </p>
                       <p className="text-xs text-muted-foreground/60 mt-1">
-                        Images only (JPG, PNG, WEBP) • Max 5 files
+                        Images only (JPG, PNG, WEBP) • Max 8 files
                       </p>
                     </div>
                   ) : (
