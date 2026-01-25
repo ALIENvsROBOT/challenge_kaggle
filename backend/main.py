@@ -304,9 +304,20 @@ async def ingest_medical_record(
     except Exception as e:
         logger.error(f"Critical System Error: {e}")
         raise HTTPException(500, "Internal Processing Failed")
-    finally:
         # cleanup is removed because we want to keep the file!
         pass
+
+@app.get("/api/v1/submissions", dependencies=[Depends(verify_api_key)])
+async def list_submissions(limit: int = 15):
+    """
+    **Retrieve Recent Records**
+    
+    Fetches the history of processed patient records from the database.
+    Used by the frontend dashboard to show real-time history.
+    """
+    from backend.medgemma.persistence import get_submissions
+    data = get_submissions(limit=limit)
+    return data
 
 if __name__ == "__main__":
     import uvicorn

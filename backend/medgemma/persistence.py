@@ -85,3 +85,29 @@ def save_submission(
     except Exception as e:
         logger.error(f"Database Write Failed: {e}")
         return False
+
+def get_submissions(limit: int = 20) -> list:
+    """Retrieves the most recent submissions."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, patient_id, original_filename, created_at, status FROM submissions ORDER BY created_at DESC LIMIT %s",
+            (limit,)
+        )
+        rows = cur.fetchall()
+        submissions = []
+        for row in rows:
+            submissions.append({
+                "id": str(row[0]),
+                "patient_id": row[1],
+                "filename": row[2],
+                "created_at": row[3].isoformat(),
+                "status": row[4]
+            })
+        cur.close()
+        conn.close()
+        return submissions
+    except Exception as e:
+        logger.error(f"Failed to fetch submissions: {e}")
+        return []
