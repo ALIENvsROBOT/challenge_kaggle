@@ -155,7 +155,7 @@ def parse_range(value: str) -> Dict[str, Any]:
 
 def parse_tsv_extraction(text: str) -> Optional[Dict[str, Any]]:
     normalized = text.replace("\\t", "\t").replace("\\n", "\n")
-    lines = [l.rstrip() for l in normalized.splitlines() if l.strip()]
+    lines = [line.rstrip() for line in normalized.splitlines() if line.strip()]
     if not lines:
         return None
 

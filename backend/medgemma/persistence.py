@@ -9,7 +9,7 @@ import os
 import logging
 import psycopg2
 from psycopg2.extras import Json
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 
 # Configuration
 DB_HOST = os.getenv("POSTGRES_HOST", "db")

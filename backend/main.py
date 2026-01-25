@@ -33,8 +33,7 @@ from pydantic import BaseModel
 from backend.medgemma.client import MedGemmaClient
 from backend.medgemma.extraction import (
     build_extraction_prompt, 
-    sanitize_extraction, 
-    validate_extraction
+    sanitize_extraction
 )
 from backend.medgemma.fhir import (
     bundle_from_extraction, 
@@ -56,7 +55,7 @@ logging.basicConfig(level=logging.INFO)
 # Initialize DB on import
 try:
     init_db()
-except:
+except Exception:
     pass
 
 app = FastAPI(title=API_TITLE, version=API_VERSION)
@@ -190,7 +189,7 @@ def process_files_sync(file_paths: List[Path]) -> Dict[str, Any]:
                     candidates_eval = ast.literal_eval(candidate)
                     if isinstance(candidates_eval, dict):
                         extraction = candidates_eval
-                except:
+                except Exception:
                     pass
             
             # D. ROBUST FALLBACK (Green Signal Mode)
