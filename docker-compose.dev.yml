@@ -1,0 +1,83 @@
+version: "3.8"
+
+services:
+  # ---------------------------------------------------------------------------
+  # Database Service (PostgreSQL)
+  # - Uses standard Postgres image.
+  # - Persists data to a named volume.
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: medgemma_db_dev
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-medgemma}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-medgemma_local}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - medgemma_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-medgemma} -d ${POSTGRES_DB:-medgemma_local}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Backend API (Python/FastAPI Placeholder)
+  # - Mounts source code as Volume for Hot-Reloading.
+  # - Dependencies managed by UV/Pip.
+  # ---------------------------------------------------------------------------
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: medgemma_api_dev
+    command: ["uv", "run", "uvicorn", "Python_Scripts.api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount entire project for live editing
+      - .:/app
+      # Cache mounts for faster pip/uv installs
+      - uv_cache:/root/.cache/uv
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - medgemma_net
+
+  # ---------------------------------------------------------------------------
+  # Frontend (React/Vite)
+  # - Proxies API requests to 'backend' service.
+  # - Hot-reloading enabled via volume mount.
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: medgemma_ui_dev
+    ports:
+      - "3000:5173" # Expose Vite dev server to host:3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - medgemma_net
+
+volumes:
+  postgres_data_dev:
+  uv_cache:
+
+networks:
+  medgemma_net:
+    driver: bridge

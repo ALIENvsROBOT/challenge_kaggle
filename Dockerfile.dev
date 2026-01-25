@@ -8,8 +8,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 # Copy dependency definition
 COPY pyproject.toml ./
 
-# Install dependencies
-RUN uv sync --frozen --no-cache
+# Install dependencies (including dev deps if configured)
+RUN uv sync --no-cache
 
 # Copy Application Code
 COPY . .
@@ -18,5 +18,5 @@ COPY . .
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app"
 
-# Run Uvicorn in production mode
-CMD ["uv", "run", "uvicorn", "Python_Scripts.api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Command is overridden by docker-compose for hot-reload
+CMD ["uv", "run", "uvicorn", "Python_Scripts.api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

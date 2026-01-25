@@ -19,6 +19,7 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
+import ConfigurationPage from './pages/ConfigurationPage';
 
 /**
  * --- MOCK DATA CONSTANTS ---
@@ -359,8 +360,11 @@ function App() {
           </div>
         </header>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-auto p-8 space-y-8 custom-scrollbar">
+        {/* Content Switcher */}
+        {activeNav === 'settings' ? (
+           <ConfigurationPage />
+        ) : (
+          <div className="flex-1 overflow-auto p-8 space-y-8 custom-scrollbar">
           
           {/* Hero Section */}
           <div className="flex flex-col xl:flex-row items-start xl:items-end justify-between gap-6">
@@ -521,7 +525,8 @@ function App() {
              </div>
 
           </div>
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );
