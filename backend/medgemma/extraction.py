@@ -310,8 +310,13 @@ def sanitize_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
     observations = extraction.get("observations")
     if not isinstance(observations, list):
         observations = extraction.get("obs")
+    
+    # HEAL FLAT JSON: If extraction itself looks like a single observation
     if not isinstance(observations, list):
-        observations = []
+        if any(k in extraction for k in ["name", "test", "analyte", "v", "value"]):
+            observations = [extraction]
+        else:
+            observations = []
 
     identifier = patient.get("identifier")
     if identifier is None and isinstance(patient.get("id2"), str):

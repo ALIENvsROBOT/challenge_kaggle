@@ -55,21 +55,21 @@ function App() {
     }
 
     try {
-        log(`Initializing secure session for Patient: ${patientId}...`);
+        log(`Processing ${files.length} record(s) for Patient: ${patientId}...`);
         
         if (files.length === 0) {
              throw new Error("No files selected");
         }
         
-        log(`Uploading file: ${files[0].name} (${(files[0].size/1024).toFixed(1)} KB)...`);
+        log(`Sending collective query to vLLM (MedGemma Matrix)...`);
         
-        const result = await ingestMedicalRecord(patientId, files[0], activeKey);
+        const result = await ingestMedicalRecord(patientId, files, activeKey);
         
-        log(`Success: Bundle ${result.submission_id.slice(0,8)} processed.`);
+        log(`Success: Batch Bundle ${result.submission_id.slice(0,8)} processed.`);
         if (result.db_persisted) {
             log("PostgreSQL: Data successfully committed to DB.");
         }
-        log(`Patient ID: ${result.patient_id} updated.`);
+        log(`Records for Patient ID: ${result.patient_id} categorized.`);
         
         // Trigger data refresh in dashboard
         setRefreshTrigger(prev => prev + 1);

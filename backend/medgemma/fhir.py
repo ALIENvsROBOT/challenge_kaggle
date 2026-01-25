@@ -234,8 +234,36 @@ def bundle_from_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
         patient_resource["name"] = [name]
     bundle["entry"].append({"resource": patient_resource})
 
+    # LOINC Knowledge Base for "Perfect" FHIR JSON
+    LOINC_MAPPING = {
+        "haemoglobin": "718-7",
+        "hemoglobin": "718-7",
+        "total wbc count": "6690-2",
+        "wbc count": "6690-2",
+        "total rbc count": "789-8",
+        "rbc count": "789-8",
+        "platelet count": "777-3",
+        "haematocrit": "4544-3",
+        "hematocrit": "4544-3",
+        "hct": "4544-3",
+        "pcv": "4544-3",
+        "mcv": "787-2",
+        "mch": "785-6",
+        "mchc": "786-4",
+        "rdw": "14563-1",
+        "neutrophils": "770-8",
+        "lymphocytes": "731-0",
+        "monocytes": "742-7",
+        "eosinophils": "711-2",
+        "basophils": "704-7"
+    }
+
     compute_flags = os.getenv("medGemma_compute_flags", "1").strip().lower() in {"1", "true", "yes"}
     for idx, o in enumerate(observations, start=1):
+        name = o.get("name", "")
+        clean_name = name.lower().strip()
+        loinc_code = LOINC_MAPPING.get(clean_name)
+        
         obs = {
             "resourceType": "Observation",
             "id": f"obs-{idx}",
@@ -246,16 +274,34 @@ def bundle_from_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
                         {
                             "system": "http://terminology.hl7.org/CodeSystem/observation-category",
                             "code": "laboratory",
+                            "display": "Laboratory"
                         }
                     ]
                 }
             ],
-            "code": {"text": o.get("name")},
+            "code": {
+                "text": name,
+                "coding": []
+            },
             "subject": {"reference": "Patient/patient-1"},
-            "valueQuantity": {"value": o.get("value")},
         }
-        if o.get("unit"):
-            obs["valueQuantity"]["unit"] = normalize_unit(o.get("unit"))
+
+        if loinc_code:
+            obs["code"]["coding"].append({
+                "system": "http://loinc.org",
+                "code": loinc_code,
+                "display": name
+            })
+
+        val = o.get("value")
+        # FHIR PERFECTION: valueQuantity MUST be a number. Use valueString for text like "Verified"
+        if isinstance(val, (int, float)):
+            obs["valueQuantity"] = {"value": val}
+            if o.get("unit"):
+                obs["valueQuantity"]["unit"] = normalize_unit(o.get("unit"))
+        else:
+            obs["valueString"] = str(val)
+
         if report_date:
             obs["effectiveDateTime"] = report_date
         ref_low = o.get("ref_low")

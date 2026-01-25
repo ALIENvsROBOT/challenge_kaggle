@@ -5,16 +5,20 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 /**
- * Ingest a medical record (image or PDF)
+ * Ingest multiple medical records (images or PDFs)
  * @param {string} patientId 
- * @param {File} file 
+ * @param {Array<File>} files 
  * @param {string} apiKey 
  * @returns {Promise<Object>}
  */
-export const ingestMedicalRecord = async (patientId, file, apiKey) => {
+export const ingestMedicalRecord = async (patientId, files, apiKey) => {
     const formData = new FormData();
     formData.append('patient_id', patientId);
-    formData.append('file', file);
+    
+    // Multi-file support: append all files to the 'files' field
+    files.forEach(file => {
+        formData.append('files', file);
+    });
 
     const response = await fetch(`${API_URL}/api/v1/ingest`, {
         method: 'POST',

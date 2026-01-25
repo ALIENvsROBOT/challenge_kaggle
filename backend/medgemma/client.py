@@ -103,22 +103,26 @@ class MedGemmaClient:
     def query(
         self,
         message: str,
-        image_path: Optional[Union[str, Path]] = None,
+        image_paths: Optional[List[Union[str, Path]]] = None,
         timeout: int = DEFAULT_TIMEOUT,
         system_prompt: Optional[str] = None,
         structured_schema: Optional[Dict[str, Any]] = None,
         response_format: Optional[Dict[str, Any]] = None,
     ) -> Optional[str]:
         url = self._build_chat_url(self.base_url)
-        path_obj = Path(image_path) if image_path else None
-
-        if path_obj and not path_obj.exists():
-            logger.warning(f"Image not found at {path_obj}. Falling back to text-only.")
-            path_obj = None
+        
+        valid_paths = []
+        if image_paths:
+            for p in image_paths:
+                path_obj = Path(p)
+                if path_obj.exists():
+                    valid_paths.append(path_obj)
+                else:
+                    logger.warning(f"Image not found at {path_obj}. Skipping.")
 
         try:
-            if path_obj:
-                content = self._build_multimodal_content(message, path_obj)
+            if valid_paths:
+                content = self._build_multimodal_content(message, valid_paths)
             else:
                 content = message
         except OSError:
@@ -163,16 +167,21 @@ class MedGemmaClient:
             logger.exception(f"Unexpected error: {e}")
             return None
 
-    def _build_multimodal_content(self, text: str, image_path: Path) -> List[Dict[str, Any]]:
-        logger.info(f"Encoding image: {image_path.name}")
-        encoded_image = self._encode_image(image_path)
-        mime_type, _ = mimetypes.guess_type(image_path)
-        mime_type = mime_type or "image/jpeg"
+    def _build_multimodal_content(self, text: str, image_paths: List[Path]) -> List[Dict[str, Any]]:
+        content = [{"type": "text", "text": text}]
+        
+        for i, path in enumerate(image_paths):
+            logger.info(f"Encoding image [{i+1}/{len(image_paths)}]: {path.name}")
+            encoded_image = self._encode_image(path)
+            mime_type, _ = mimetypes.guess_type(path)
+            mime_type = mime_type or "image/jpeg"
+            
+            content.append({
+                "type": "image_url", 
+                "image_url": {"url": f"data:{mime_type};base64,{encoded_image}"}
+            })
 
-        return [
-            {"type": "text", "text": text},
-            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded_image}"}},
-        ]
+        return content
 
     def _build_chat_url(self, base_url: str) -> str:
         base = base_url.rstrip("/")

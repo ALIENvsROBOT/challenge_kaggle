@@ -9,15 +9,21 @@ const UploadModal = ({ show, onClose, onStartProcess }) => {
 
   const onDrop = (acceptedFiles) => {
     if (acceptedFiles?.length > 0) {
-      setFiles(acceptedFiles);
+      setFiles(prev => {
+        const combined = [...prev, ...acceptedFiles];
+        if (combined.length > 5) {
+          alert("Maximum 5 images allowed per session.");
+          return combined.slice(0, 5);
+        }
+        return combined;
+      });
     }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': [],
-      'application/pdf': []
+      'image/*': ['.jpeg', '.jpg', '.png', '.webp']
     },
     multiple: true
   });
@@ -96,7 +102,7 @@ const UploadModal = ({ show, onClose, onStartProcess }) => {
                         <span className="font-semibold text-primary">Click to upload</span> or drag and drop
                       </p>
                       <p className="text-xs text-muted-foreground/60 mt-1">
-                        Images or PDFs (Multiple allowed)
+                        Images only (JPG, PNG, WEBP) • Max 5 files
                       </p>
                     </div>
                   ) : (

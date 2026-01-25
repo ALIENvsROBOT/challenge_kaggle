@@ -5,3 +5,6 @@ __pycache__/
 temp_output.log
 
 .env.prod
+
+# Data and Artifacts
+uploaded_files/
