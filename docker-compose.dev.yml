@@ -37,7 +37,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     container_name: medgemma_api_dev
-    command: ["uv", "run", "uvicorn", "Python_Scripts.api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: ["uv", "run", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     env_file: .env
     ports:
       - "8000:8000"

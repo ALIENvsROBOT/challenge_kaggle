@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Key, 
   RefreshCw, 
@@ -13,7 +13,7 @@ import {
   EyeOff,
   AlertCircle
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 
 const ConfigurationPage = () => {
   // Lazy init state from localStorage to avoid sync SetState in effect

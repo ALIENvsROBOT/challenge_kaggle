@@ -196,7 +196,12 @@ function App() {
         log("Validating FHIR R4 Bundles...");
         console.log("FHIR Result:", result.fhir_bundle);
         
-        log(`Success: Bundle ${result.submission_id.slice(0,8)} persisted.`);
+        log(`Success: Bundle ${result.submission_id.slice(0,8)} processed.`);
+        
+        if (result.db_persisted) {
+            log("PostgreSQL: Data successfully committed to DB.");
+        }
+        
         log(`Patient ID: ${result.patient_id} updated.`);
 
     } catch (error) {

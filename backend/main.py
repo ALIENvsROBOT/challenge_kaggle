@@ -30,19 +30,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Internal Modules
-from Python_Scripts.medgemma.client import MedGemmaClient
-from Python_Scripts.medgemma.extraction import (
+from backend.medgemma.client import MedGemmaClient
+from backend.medgemma.extraction import (
     build_extraction_prompt, 
     sanitize_extraction, 
     validate_extraction
 )
-from Python_Scripts.medgemma.fhir import (
+from backend.medgemma.fhir import (
     bundle_from_extraction, 
     sanitize_bundle, 
     ensure_interpretation_from_range, 
     validate_bundle_minimal
 )
-from Python_Scripts.medgemma.utils import extract_json_candidate
+from backend.medgemma.utils import extract_json_candidate
+from backend.medgemma.persistence import init_db, save_submission
 
 # --- Configuration ---
 API_TITLE = "MedGemma FHIR-Bridge API"
@@ -51,6 +52,12 @@ API_VERSION = "1.0.0"
 # Logging Setup
 logger = logging.getLogger("medgemma_api")
 logging.basicConfig(level=logging.INFO)
+
+# Initialize DB on import
+try:
+    init_db()
+except:
+    pass
 
 app = FastAPI(title=API_TITLE, version=API_VERSION)
 
@@ -124,7 +131,10 @@ class IngestResponse(BaseModel):
     submission_id: str
     patient_id: str
     status: str
+    db_persisted: bool
     fhir_bundle: Dict[str, Any]
+
+
 
 
 # --- Helper Methods ---
@@ -163,7 +173,7 @@ def process_file_sync(file_path: Path) -> Dict[str, Any]:
                 
             # B. Try TSV (Common in Strict Mode)
             if not extraction:
-                from Python_Scripts.medgemma.extraction import parse_tsv_extraction
+                from backend.medgemma.extraction import parse_tsv_extraction
                 # Basic check if it looks like TSV (has tabs and lines)
                 if "\t" in candidate or "\n" in candidate:
                     extraction = parse_tsv_extraction(candidate)
@@ -212,6 +222,8 @@ def process_file_sync(file_path: Path) -> Dict[str, Any]:
         raise e
 
 
+
+
 # --- Endpoints ---
 
 @app.get("/health", response_model=HealthCheckResponse)
@@ -232,26 +244,24 @@ async def ingest_medical_record(
     **Secure Ingestion Endpoint**
     
     Uploads a clinical image, processes it through the MedGemma Safety Pipeline,
-    and returns a compliant FHIR Bundle.
-    
-    - **Step 1:** Validate API Key.
-    - **Step 2:** Save file securely to temporary storage.
-    - **Step 3:** Trigger MedGemma Inference & Safety Audit.
-    - **Step 4:** Return FHIR v4 JSON.
+    persists it to PostgreSQL and Disk, and returns a compliant FHIR Bundle.
     """
     
     # 1. File Validation
     if not file.content_type.startswith("image/") and file.content_type != "application/pdf":
         raise HTTPException(400, "Only Image or PDF files are supported.")
     
-    # 2. Secure Storage (Temp)
+    # 2. Secure Storage (Persistent)
     submission_id = str(uuid.uuid4())
-    temp_dir = Path("temp_uploads")
-    temp_dir.mkdir(exist_ok=True)
+    upload_dir = Path("uploaded_files") # Maps to host ./uploaded_files
+    upload_dir.mkdir(exist_ok=True)
     
     file_ext = Path(file.filename).suffix
     safe_filename = f"{submission_id}{file_ext}"
-    file_path = temp_dir / safe_filename
+    file_path = upload_dir / safe_filename
+    
+    # We save absolute path for DB, relative for portability
+    db_file_path = str(file_path)
     
     try:
         with file_path.open("wb") as buffer:
@@ -259,27 +269,33 @@ async def ingest_medical_record(
             
         logger.info(f"Ingesting file: {safe_filename} for Patient: {patient_id}")
         
-        # 3. Processing (Blocking Call - moved to sync function for clarity)
-        # In a massive scale system, this would be pushed to a Celery/Redis Queue.
-        # For this challenge/API, running inline is acceptable given vLLM speed.
+        # 3. Processing (Blocking Call)
         fhir_bundle = process_file_sync(file_path)
         
-        # Inject known patient_id if not extracted or to override
+        # Inject known patient_id
         if fhir_bundle.get("entry"):
-            # Update Patient Resource ID to match form data (Source of Truth)
             for entry in fhir_bundle["entry"]:
                 if entry.get("resource", {}).get("resourceType") == "Patient":
                     entry["resource"]["id"] = patient_id
-                    # Also update identifiers to include the submission ID
                     entry["resource"].setdefault("identifier", []).append({
                         "system": "urn:uuid:submission-id",
                         "value": submission_id
                     })
 
+        # 4. Persistence (PostgreSQL)
+        persisted_ok = save_submission(
+            submission_id=submission_id, 
+            patient_id=patient_id, 
+            filename=file.filename, 
+            file_path=db_file_path, 
+            fhir_bundle=fhir_bundle
+        )
+
         return {
             "submission_id": submission_id,
             "patient_id": patient_id,
             "status": "completed",
+            "db_persisted": persisted_ok,
             "fhir_bundle": fhir_bundle
         }
         
@@ -289,9 +305,8 @@ async def ingest_medical_record(
         logger.error(f"Critical System Error: {e}")
         raise HTTPException(500, "Internal Processing Failed")
     finally:
-        # Cleanup
-        if file_path.exists():
-            os.remove(file_path)
+        # cleanup is removed because we want to keep the file!
+        pass
 
 if __name__ == "__main__":
     import uvicorn
