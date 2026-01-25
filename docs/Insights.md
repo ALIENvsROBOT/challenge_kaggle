@@ -70,6 +70,36 @@ By using **vLLM** and a 4B parameter model (MedGemma 1.5), this entire pipeline 
 
 ---
 
+## 5. Architectural Maturity (Post-Commit 342fe1)
+
+We evolved the project from a "Script" to a "Platform".
+
+### A. Professional Backend Refactor
+
+We moved away from monolithic scripts to a Service-Oriented Architecture:
+
+- `api.py` was refactored into a modular `backend` package.
+- **Microservice Design:** `persistence.py` handles DB/Files, `client.py` handles AI, `extraction.py` handles Logic.
+- **Dockerized:** Fully containerized with Hot-Reloading infrastructure intact despite directory shifts.
+
+### B. Robustness & Self-Healing
+
+- **TSV Fallback:** The AI model (MedGemma) occasionally outputs Tab-Separated Values instead of JSON. We implemented a **Hybrid Parser** that detects TSV on the fly and converts it to structural JSON, preventing failures.
+- **Auto-Auth:** The Frontend now "Self-Heals" missing credentials by auto-provisioning secure keys if none exist, ensuring zero friction for new users.
+
+### C. Clinical Persistence
+
+We treat every upload as a legal record:
+
+1.  **Disk Storage:** Original evidence (images) is persisted to `uploaded_files/`.
+2.  **Audit Trail:** Every interaction is logged in PostgreSQL (`submissions` table) with:
+    - `patient_id`
+    - `original_filename`
+    - `fhir_bundle` (The final legal output)
+3.  **End-to-End Verification:** The frontend receives cryptographic-like confirmation that the data hit the disk before showing "Success".
+
+---
+
 ## Summary
 
 We are not selling a "Chatbot". We are selling a **Self-Correcting Data Bridge** that turns dangerous, unstructured images into safe, standardized medical records.
