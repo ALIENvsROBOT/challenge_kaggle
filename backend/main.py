@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Annotated, Dict, Any, Optional, List
 
 from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException, Depends, status
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -58,7 +59,7 @@ try:
 except Exception:
     pass
 
-from fastapi.staticfiles import StaticFiles
+
 
 app = FastAPI(title=API_TITLE, version=API_VERSION)
 
