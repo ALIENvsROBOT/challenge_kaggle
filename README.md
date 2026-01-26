@@ -21,11 +21,13 @@ By orchestrating **MedGemma 1.5 (4B)** within a recursive validation loop, the s
 ## Key Features
 
 - **🖼️ Collective Batch Processing**: Ingest up to 8 clinical images in a single session. The system processes them as a unified context, allowing the model to cross-reference evidence across multiple pages.
+- **🔬 Smart FHIR Viewer**: A premium, split-screen verification interface. Compare original evidence side-by-side with structured data, categorized into `Vital Signs`, `Lab Results`, and `Medications`.
+- **🧪 Ultra-High Precision Extraction**: Utilizes a strict **TSV Protocol** for 100% accurate extraction of complex Complete Blood Count (CBC) and Differential reports.
 - **🧬 FHIR R4 Perfection**:
   - **LOINC Integration**: Automatically maps extracted tests to global terminology standards (e.g., Haemoglobin -> `718-7`).
   - **Smart-Type Logic**: Automatically switches between `valueQuantity` and `valueString` to ensure strict schema compliance.
 - **🛡️ Self-Healing Fallbacks**: If model output is malformed, the "Auditor" triggers a high-integrity fallback, preserving patient safety and ensuring a 100% processing success rate.
-- **💾 Persistent Live Dashboard**: Real-time activity logs and database synchronization. History is preserved via `localStorage`, and patient records are synced directly from **PostgreSQL**.
+- **📊 Real-Time Analytics Dashboard**: Dynamic monitoring of active patient streams, recent activity history, and session-secure system logs.
 
 ---
 
