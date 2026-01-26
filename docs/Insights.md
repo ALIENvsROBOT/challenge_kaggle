@@ -85,17 +85,30 @@ We moved away from monolithic scripts to a Service-Oriented Architecture:
 ### B. Robustness & Self-Healing
 
 - **TSV Fallback:** The AI model (MedGemma) occasionally outputs Tab-Separated Values instead of JSON. We implemented a **Hybrid Parser** that detects TSV on the fly and converts it to structural JSON, preventing failures.
-- **Auto-Auth:** The Frontend now "Self-Heals" missing credentials by auto-provisioning secure keys if none exist, ensuring zero friction for new users.
+- **Auto-Recovery:** The frontend detects `403 Forbidden` errors (e.g., after a DB wipe) and automatically clears stale keys, triggering a seamless re-provisioning flow without user intervention.
 
-### C. Clinical Persistence
+### C. Enterprise-Grade Security (v1.3)
+
+We moved beyond simple hardcoded tokens to a full **Database-Backed Security** model:
+
+1.  **Dynamic Provisioning:** Clients request keys via `/api/v1/auth/register`.
+2.  **Persistence:** Keys are hashed and stored in PostgreSQL (`api_keys` table) with role scopes.
+3.  **Auditability:** Every keystroke and API call is tracked against a specific, revocable key ID.
+
+### D. The "Smart Rerun" (Temporal Correction)
+
+Medical understanding evolves. We built a system where old records aren't dead:
+
+- **Retroactive Analysis:** Users can trigger a "Smart Rerun" on any past document.
+- **Priority Queueing:** Reran documents are automatically timestamp-bumped (`created_at = NOW()`) to jump to the top of the clinician's queue.
+- **State Synchronization:** The frontend uses intelligent polling to ensure the "Active View" always matches the latest database state, preventing race conditions.
+
+### E. Clinical Persistence
 
 We treat every upload as a legal record:
 
 1.  **Disk Storage:** Original evidence (images) is persisted to `uploaded_files/`.
-2.  **Audit Trail:** Every interaction is logged in PostgreSQL (`submissions` table) with:
-    - `patient_id`
-    - `original_filename`
-    - `fhir_bundle` (The final legal output)
+2.  **Audit Trail:** Every interaction is logged in PostgreSQL (`submissions` table).
 3.  **End-to-End Verification:** The frontend receives cryptographic-like confirmation that the data hit the disk before showing "Success".
 
 ---

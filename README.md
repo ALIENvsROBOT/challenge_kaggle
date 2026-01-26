@@ -26,6 +26,12 @@ By orchestrating **MedGemma 1.5 (4B)** within a recursive validation loop, the s
 - **🧬 FHIR R4 Perfection**:
   - **LOINC Integration**: Automatically maps extracted tests to global terminology standards (e.g., Haemoglobin -> `718-7`).
   - **Smart-Type Logic**: Automatically switches between `valueQuantity` and `valueString` to ensure strict schema compliance.
+- **🔐 Secure API Gateway (v1.3)**:
+  - **Dynamic Provisioning**: Frontend clients auto-negotiate secure keys via `/api/v1/auth/register`.
+  - **Database Persistence**: Keys are stored in PostgreSQL with granular role scopes and revocation capabilities.
+- **🔄 Retroactive Smart Rerun**:
+  - **Temporal Correction**: Re-analyze old records with updated logic.
+  - **Priority Queueing**: Updated records automatically float to the top of the clinician's timeline for immediate review.
 - **🛡️ Self-Healing Fallbacks**: If model output is malformed, the "Auditor" triggers a high-integrity fallback, preserving patient safety and ensuring a 100% processing success rate.
 - **📊 Real-Time Analytics Dashboard**: Dynamic monitoring of active patient streams, recent activity history, and session-secure system logs.
 
