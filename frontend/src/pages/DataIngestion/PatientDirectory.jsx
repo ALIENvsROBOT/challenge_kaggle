@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
   Search, 
@@ -9,7 +9,7 @@ import {
   ArrowLeft,
   Clock
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { fetchPatients, fetchPatientHistory, getStoredApiKeys } from '../../services/api';
 import FHIRViewer from '../../components/FHIRViewer/FHIRViewer';
 
@@ -28,9 +28,8 @@ const PatientDirectory = ({ refreshTrigger, initialSearchTerm = '' }) => {
     if (initialSearchTerm) setSearchTerm(initialSearchTerm);
   }, [initialSearchTerm]);
 
-  const [manualRefresh, setManualRefresh] = useState(0);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const keys = getStoredApiKeys();
       if (keys.length > 0) {
@@ -46,14 +45,14 @@ const PatientDirectory = ({ refreshTrigger, initialSearchTerm = '' }) => {
     } catch (error) {
       console.error("Directory fetch failed", error);
     }
-  };
+  }, [selectedPatient]);
 
   // --- Auto-Refresh ---
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 5000); // Auto-refresh every 5s
     return () => clearInterval(interval);
-  }, [refreshTrigger, selectedPatient, manualRefresh]);
+  }, [loadData, refreshTrigger]);
 
   // --- Sorting & Filtering ---
   const sortedPatients = React.useMemo(() => {
@@ -128,7 +127,7 @@ const PatientDirectory = ({ refreshTrigger, initialSearchTerm = '' }) => {
             
             {/* VIEW A: DIRECTORY TABLE */}
             {view === 'directory' && (
-                <motion.div 
+                <Motion.div 
                     key="dir"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -182,12 +181,12 @@ const PatientDirectory = ({ refreshTrigger, initialSearchTerm = '' }) => {
                             )}
                         </tbody>
                     </table>
-                </motion.div>
+                </Motion.div>
             )}
 
             {/* VIEW B: HISTORY TIMELINE */}
             {view === 'history' && (
-                <motion.div 
+                <Motion.div 
                     key="hist"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -233,7 +232,7 @@ const PatientDirectory = ({ refreshTrigger, initialSearchTerm = '' }) => {
                             <div className="text-center p-8 text-muted-foreground">No records found for this patient.</div>
                         )}
                     </div>
-                </motion.div>
+                </Motion.div>
             )}
         </AnimatePresence>
       </div>
@@ -244,7 +243,7 @@ const PatientDirectory = ({ refreshTrigger, initialSearchTerm = '' }) => {
           <FHIRViewer 
             data={selectedSubmission} 
             onClose={() => setSelectedSubmission(null)} 
-            onRefresh={() => setManualRefresh(prev => prev + 1)}
+            onRefresh={loadData}
           />
         )}
     </AnimatePresence>

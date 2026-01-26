@@ -14,7 +14,7 @@ const handleResponse = async (response) => {
                     ? errorData.detail 
                     : JSON.stringify(errorData.detail);
             }
-        } catch (e) {
+        } catch {
             const text = await response.text();
             if (text) errorMsg += `: ${text}`;
         }

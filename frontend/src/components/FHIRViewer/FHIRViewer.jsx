@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -74,27 +74,27 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
     if (!isReloading && data) {
         // SAFEGUARD: If our local data has more observations than the incoming prop data,
         // the prop data is likely 'stale' (e.g. the list API hasn't updated yet).
-        const localObs = localData?.fhir_bundle?.entry?.filter(e => e.resource.resourceType === 'Observation').length || 0;
-        const incomingObs = data?.fhir_bundle?.entry?.filter(e => e.resource.resourceType === 'Observation').length || 0;
+        const localObsCount = localData?.fhir_bundle?.entry?.filter(e => e.resource.resourceType === 'Observation').length || 0;
+        const incomingObsCount = data?.fhir_bundle?.entry?.filter(e => e.resource.resourceType === 'Observation').length || 0;
         
-        if (incomingObs < localObs && localObs > 3) {
+        if (incomingObsCount < localObsCount && localObsCount > 3) {
             console.log("[FHIRViewer] Ignoring potentially stale data sync from parent list.");
             return;
         }
         setLocalData(data);
     }
-  }, [data, isReloading]);
+  }, [data, isReloading, localData]);
   
   // Extract data from FHIR Bundle safely
-  const resources = localData?.fhir_bundle?.entry?.map(e => e.resource) || [];
+  const resources = useMemo(() => localData?.fhir_bundle?.entry?.map(e => e.resource) || [], [localData]);
   
   // Group Resources
-  const observations = resources.filter(r => r.resourceType === 'Observation');
-  const medications = resources.filter(r => 
+  const observations = useMemo(() => resources.filter(r => r.resourceType === 'Observation'), [resources]);
+  const medications = useMemo(() => resources.filter(r => 
     r.resourceType === 'MedicationRequest' || 
     r.resourceType === 'MedicationStatement'
-  );
-  const patient = resources.find(r => r.resourceType === 'Patient');
+  ), [resources]);
+  const patient = useMemo(() => resources.find(r => r.resourceType === 'Patient'), [resources]);
 
   const handleCopy = () => {
     const jsonStr = JSON.stringify(localData?.fhir_bundle || {}, null, 2);
@@ -126,7 +126,7 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
     } else {
         setActiveTab('vitals');
     }
-  }, [localData]);
+  }, [observations, medications.length]);
 
   const handleReload = async () => {
     if (isReloading) return;
