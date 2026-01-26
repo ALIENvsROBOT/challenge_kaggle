@@ -35,7 +35,7 @@ const DashboardPage = ({ onUploadClick, isProcessing, logs, refreshTrigger }) =>
   }, [refreshTrigger, isProcessing]);
 
   return (
-    <div className="flex-1 overflow-auto p-8 space-y-8 custom-scrollbar">
+    <div className="flex-1 overflow-auto p-8 space-y-6 custom-scrollbar">
       {/* Hero Section */}
       <div className="flex flex-col xl:flex-row items-start xl:items-end justify-between gap-6">
         <div className="max-w-2xl"> 
