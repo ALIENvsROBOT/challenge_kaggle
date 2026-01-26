@@ -177,7 +177,8 @@ def parse_tsv_extraction(text: str) -> Optional[Dict[str, Any]]:
 
     for idx, line in enumerate(lines):
         upper = line.upper().strip()
-        if upper == "TSV": continue
+        if upper == "TSV":
+            continue
         if upper.startswith("PATIENT_NAME:"):
             patient["name"] = line.split(":", 1)[1].strip()
             continue
@@ -204,7 +205,8 @@ def parse_tsv_extraction(text: str) -> Optional[Dict[str, Any]]:
     
     for line in lines[start_idx:]:
         clean_line = line.strip()
-        if not clean_line: continue
+        if not clean_line:
+            continue
         
         # Skip metadata lines if we missed them above
         if ":" in clean_line and clean_line.split(":")[0].upper().rstrip(":").endswith(("NAME", "ID", "MRN", "DATE", "MODALITY")):
@@ -268,7 +270,8 @@ def parse_tsv_extraction(text: str) -> Optional[Dict[str, Any]]:
              unit, ref_low, ref_high, flag = parts[2:6]
 
         obs = {"name": name, "value": val}
-        if unit: obs["unit"] = unit
+        if unit:
+            obs["unit"] = unit
         
         # Clean Flag
         clean_flag = flag.strip().upper().replace("[", "").replace("]", "")
@@ -277,8 +280,10 @@ def parse_tsv_extraction(text: str) -> Optional[Dict[str, Any]]:
         elif clean_flag in {"L", "LOW", "LO"}:
             obs["flag"] = "L"
             
-        if ref_low: obs["ref_low"] = ref_low
-        if ref_high: obs["ref_high"] = ref_high
+        if ref_low:
+            obs["ref_low"] = ref_low
+        if ref_high:
+            obs["ref_high"] = ref_high
         
         observations.append(obs)
 

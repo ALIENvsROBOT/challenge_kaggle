@@ -259,7 +259,6 @@ def bundle_from_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
         "basophils": "704-7"
     }
 
-    compute_flags = os.getenv("medGemma_compute_flags", "1").strip().lower() in {"1", "true", "yes"}
     modality = patient.get("modality", "LAB")
     obs_category = "laboratory"
     obs_display = "Laboratory"
@@ -364,10 +363,11 @@ def bundle_from_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
             if ref_low is not None:
                 low_parts = split_value_unit(str(ref_low))
                 lv = low_parts.get("value", ref_low)
-                try: 
+                try:
                     low_numeric = float(re.sub(r'[^\d.]', '', str(lv)))
                     rr["low"] = {"value": low_numeric}
-                except: rr["low"] = {"value": lv}
+                except Exception:
+                    rr["low"] = {"value": lv}
                 
                 if o.get("unit"):
                     rr["low"]["unit"] = normalize_unit(o.get("unit"))
@@ -377,10 +377,11 @@ def bundle_from_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
             if ref_high is not None:
                 high_parts = split_value_unit(str(ref_high))
                 hv = high_parts.get("value", ref_high)
-                try: 
+                try:
                     high_numeric = float(re.sub(r'[^\d.]', '', str(hv)))
                     rr["high"] = {"value": high_numeric}
-                except: rr["high"] = {"value": hv}
+                except Exception:
+                    rr["high"] = {"value": hv}
                 
                 if o.get("unit"):
                     rr["high"]["unit"] = normalize_unit(o.get("unit"))

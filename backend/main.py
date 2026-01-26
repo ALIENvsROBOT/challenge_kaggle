@@ -33,7 +33,6 @@ from pydantic import BaseModel
 # Internal Modules
 from backend.medgemma.client import MedGemmaClient
 from backend.medgemma.extraction import (
-    build_extraction_prompt, 
     sanitize_extraction
 )
 from backend.medgemma.fhir import (
