@@ -34,10 +34,12 @@ def get_db_connection():
         raise e
 
 def init_db():
-    """Ensures the submissions table exists on startup."""
+    """Ensures the submissions and api_keys tables exist on startup."""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+        
+        # Submissions Table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS submissions (
                 id UUID PRIMARY KEY,
@@ -49,12 +51,70 @@ def init_db():
                 status VARCHAR(50)
             );
         """)
+
+        # API Keys Table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS api_keys (
+                key VARCHAR(100) PRIMARY KEY,
+                name VARCHAR(100),
+                role VARCHAR(50) DEFAULT 'user',
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_used_at TIMESTAMP
+            );
+        """)
+        
         conn.commit()
         cur.close()
         conn.close()
-        logger.info("Database initialized correctly.")
+        logger.info("Database initialized (submissions + api_keys).")
     except Exception as e:
         logger.error(f"Database Initialization Failed: {e}")
+
+# ... (Previous existing functions: save_submission, get_submissions, get_submission, update_submission, get_patients_directory, get_patient_history) ...
+
+def create_api_key(key: str, name: str, role: str = "user") -> bool:
+    """Stores a new API key in the database."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO api_keys (key, name, role) VALUES (%s, %s, %s) ON CONFLICT (key) DO NOTHING",
+            (key, name, role)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to create API key: {e}")
+        return False
+
+def validate_api_key(token: str) -> bool:
+    """
+    Checks if an API key exists and is active.
+    Updates last_used_at if valid.
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT is_active FROM api_keys WHERE key = %s", (token,))
+        row = cur.fetchone()
+        
+        if row and row[0]:
+            # Key exists and is active
+            cur.execute("UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE key = %s", (token,))
+            conn.commit()
+            valid = True
+        else:
+            valid = False
+            
+        cur.close()
+        conn.close()
+        return valid
+    except Exception as e:
+        logger.error(f"API Key Validation Failed: {e}")
+        return False
 
 def save_submission(
     submission_id: str, 

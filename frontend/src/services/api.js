@@ -5,6 +5,12 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const handleResponse = async (response) => {
+    if (response.status === 401 || response.status === 403) {
+        // Key is invalid (likely backend DB wipe). Clear it so we can re-provision.
+        console.warn(`Auth Error (${response.status}). Clearing stored keys.`);
+        localStorage.removeItem('medgemma_api_keys');
+    }
+
     if (!response.ok) {
         let errorMsg = `Server Error (${response.status})`;
         try {
@@ -176,20 +182,41 @@ export const generateKey = (length = 24) => {
 
 /**
  * Auto-provision a new API key if none exists
+ * Now calls the backend to register a secure key instead of generating locally.
  */
-export const autoProvisionApiKey = () => {
+export const autoProvisionApiKey = async () => {
     const keys = getStoredApiKeys();
-    if (keys.length === 0) {
+    if (keys.length > 0) {
+        return keys[0];
+    }
+
+    try {
+        console.log("Requesting new API key from backend...");
+        const response = await fetch(`${API_URL}/api/v1/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Registration failed: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
         const newKey = {
             id: generateId(),
-            name: 'Auto-Generated Demo Key',
-            key: 'sk-' + generateKey(48),
-            created: new Date().toISOString(),
-            role: 'Internal'
+            name: data.name,
+            key: data.key,
+            created: data.created_at,
+            role: 'Frontend'
         };
+        
         saveApiKeys([newKey]);
         return newKey;
+    } catch (e) {
+        console.error("Failed to provision API Key:", e);
+        // Fallback or re-throw depending on desired behavior.
+        // For now, we return null so the UI can prompt or retry.
+        return null;
     }
-    return keys[0];
-
 };

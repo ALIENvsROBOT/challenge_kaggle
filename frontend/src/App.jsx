@@ -51,16 +51,38 @@ function App() {
     });
   };
 
+  // Auto-provision key on startup
+  useEffect(() => {
+    autoProvisionApiKey().then(key => {
+        if (key) console.log("System API Key Validated:", key.id);
+    });
+  }, []);
+
   const handleStartProcess = async (patientId, files) => {
     setShowUploadModal(false);
     setIsProcessing(true);
 
     // Get or Provision API Key
-    const activeKeyObj = autoProvisionApiKey();
+    let activeKeyObj = await autoProvisionApiKey();
+    
+    // RETRY LOGIC: If provisioning returned null (maybe due to network race)
+    // or if we suspect the key might be stale, try one more time.
+    if (!activeKeyObj) {
+        console.log("Retrying API Key Provisioning...");
+        activeKeyObj = await autoProvisionApiKey();
+    }
+
+    if (!activeKeyObj) {
+        log("Error: Failed to obtain valid API Key from backend.");
+        setIsProcessing(false);
+        return;
+    }
     const activeKey = activeKeyObj.key;
     
-    if (activeKeyObj.name === 'Auto-Generated Demo Key') {
-        log("System: Auto-provisioned new API Access Key.");
+    // Log new key generation if relevant
+    if (activeKeyObj.name.includes('Frontend Client')) {
+        // We don't need to log every time, just if it was newly created (implicit logic in autoProvision)
+        // But here we just assume it works.
     }
 
     try {
