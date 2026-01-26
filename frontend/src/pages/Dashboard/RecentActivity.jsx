@@ -34,24 +34,30 @@ const RecentActivity = ({ refreshTrigger }) => {
   const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
 
-  useEffect(() => {
-    let interval;
-    const loadData = async () => {
-      try {
-        const keys = getStoredApiKeys();
-        if (keys.length > 0) {
-            const data = await fetchSubmissions(keys[0].key, 10);
-            setSubmissions(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch activity:", error);
-      } finally {
-        setLoading(false);
+  const loadData = async () => {
+    try {
+      const keys = getStoredApiKeys();
+      if (keys.length > 0) {
+          const data = await fetchSubmissions(keys[0].key, 10);
+          setSubmissions(data);
+          
+          // Sync selected submission if it exists
+          setSelectedSubmission(prev => {
+              if (!prev) return null;
+              const updated = data.find(s => s.id === prev.id);
+              return updated || prev;
+          });
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch activity:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadData();
-    interval = setInterval(loadData, 5000); // Auto-refresh every 5s
+    const interval = setInterval(loadData, 5000); // Auto-refresh every 5s
     return () => clearInterval(interval);
   }, [refreshTrigger]);
 
@@ -119,13 +125,7 @@ const RecentActivity = ({ refreshTrigger }) => {
           <FHIRViewer 
             data={selectedSubmission} 
             onClose={() => setSelectedSubmission(null)} 
-            onRefresh={async () => {
-               const keys = getStoredApiKeys();
-               if (keys.length > 0) {
-                   const data = await fetchSubmissions(keys[0].key, 10);
-                   setSubmissions(data);
-               }
-            }}
+            onRefresh={loadData}
           />
         )}
       </AnimatePresence>

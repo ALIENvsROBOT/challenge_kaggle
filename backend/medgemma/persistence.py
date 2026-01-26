@@ -156,7 +156,7 @@ def update_submission(submission_id: str, fhir_bundle: Dict[str, Any]) -> bool:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "UPDATE submissions SET fhir_bundle = %s, status = %s WHERE id = %s",
+            "UPDATE submissions SET fhir_bundle = %s, status = %s, created_at = CURRENT_TIMESTAMP WHERE id = %s",
             (Json(fhir_bundle), "completed", submission_id)
         )
         conn.commit()

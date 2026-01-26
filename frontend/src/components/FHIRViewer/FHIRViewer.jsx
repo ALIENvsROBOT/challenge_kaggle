@@ -72,6 +72,15 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
   // Sync with parent data if it refreshes in background, but don't overwrite during reload
   useEffect(() => {
     if (!isReloading && data) {
+        // SAFEGUARD: If our local data has more observations than the incoming prop data,
+        // the prop data is likely 'stale' (e.g. the list API hasn't updated yet).
+        const localObs = localData?.fhir_bundle?.entry?.filter(e => e.resource.resourceType === 'Observation').length || 0;
+        const incomingObs = data?.fhir_bundle?.entry?.filter(e => e.resource.resourceType === 'Observation').length || 0;
+        
+        if (incomingObs < localObs && localObs > 3) {
+            console.log("[FHIRViewer] Ignoring potentially stale data sync from parent list.");
+            return;
+        }
         setLocalData(data);
     }
   }, [data, isReloading]);
@@ -134,8 +143,12 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
             }));
             setLastUpdated(new Date().toLocaleTimeString());
             
-            // Notify parent to refresh its cache
-            if (onRefresh) onRefresh();
+            // Notify parent to refresh its cache and wait for it
+            if (onRefresh) {
+                await onRefresh();
+                // Brief pause to ensure state transitions settle
+                await new Promise(r => setTimeout(r, 500));
+            }
         }
     } catch (error) {
         console.error("Reload failed:", error);

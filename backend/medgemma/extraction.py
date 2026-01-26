@@ -89,37 +89,31 @@ def build_lab_prompt() -> str:
 def build_radiology_prompt() -> str:
     """Step 2b: Extract Radiology Findings (Expert Diagnostic Prompt)"""
     return (
-        "You are a Senior Radiologist Consultant. Your task is to extract structured anatomical findings from this medical scan report (CT, MRI, X-Ray, Ultrasound).\n"
+        "You are a Senior Radiologist Consultant. Your task is to provide a structured diagnostic interpretation of this medical scan (X-RAY, CT, MRI, etc.).\n"
         "\n"
-        "1. **CLASSIFY THE SCAN**: First, identify the MODALITY (e.g., MRI) and REGION (e.g., Brain, Lumbar Spine, Abdomen).\n"
-        "2. **EXTRACT FINDINGS**: For every anatomical structure mentioned, status its condition.\n"
-        "3. **EXTRACT CONCLUSION**: Copy the 'IMPRESSION' or 'CONCLUSION' section verbatim. This is critical.\n"
+        "### CRITICAL EXTRACTION RULES ###\n"
+        "1. **MULTIPLE ROWS**: You MUST output EVERY anatomical finding as a SEPARATE ROW in the TSV table.\n"
+        "2. **DO NOT CONCATENATE**: Never put all findings into one row. Break them down by anatomy (e.g., Lungs, Heart, Pleura, Bones).\n"
+        "3. **STRICT TSV**: Use ONLY Tabs between columns. Header: ANATOMY\tFINDING\tFLAG\n"
+        "\n"
+        "### ANATOMY CHECKLIST (Extract at least 4-5 rows if visible) ###\n"
+        "- **LUNGS**: Describe parenchyma, opacities, or nodules.\n"
+        "- **HEART**: Describe size and silhouette.\n"
+        "- **PLEURA**: Describe effusions or thickening.\n"
+        "- **BONES**: Describe fractures or alignment.\n"
+        "- **IMPRESSION**: Summarize the final diagnosis in the LAST row.\n"
         "\n"
         "Metadata Block:\n"
-        "PATIENT_NAME: <name>\n"
-        "MODALITY: <imaging type>\n"
+        "PATIENT_NAME: <name or 'Unknown'>\n"
+        "MODALITY: X-RAY\n"
         "\n"
-        "Structure the output as a TSV table with header: ANATOMY\\tFINDING\\tFLAG\n"
-        "\n"
-        "Extraction Guidelines:\n"
-        "- **BRAIN**: Parenchyma, Ventricles, Midline Shift, Infarcts/Hemorrhage.\n"
-        "- **SPINE**: Alignment, Disc Height, Vertebral Body, Cord Signal.\n"
-        "- **CHEST**: Lungs, Heart, Mediastinum, Pleura.\n"
-        "- **ABDOMEN**: Liver, Spleen, Kidneys, Pancreas, Bowel Loops.\n"
-        "- **IMPRESSION**: Use 'IMPRESSION' as the Anatomy name and the full concluding text as the Finding.\n"
-        "\n"
-        "Flag Rules:\n"
-        "- Normal/Unremarkable -> Leave Flag empty.\n"
-        "- Fracture, Mass, Edema, Infarct, Herniation -> Flag 'H'.\n"
-        "\n"
-        "Output Format Example:\n"
-        "PATIENT_NAME: Jane Doe\n"
-        "MODALITY: MRI BRAIN\n"
+        "Output Example (REQUIRED STRUCTURE):\n"
         "ANATOMY\tFINDING\tFLAG\n"
-        "Cerebral Parenchyma\tNormal signal intensity\t\n"
-        "Ventricles\tMild dilation observed\tH\n"
-        "Midline Structures\tNo shift\t\n"
-        "IMPRESSION\tMild hydrocephalus without acute hemorrhage.\tH\n"
+        "Lungs\tPatchy opacities detected\tH\n"
+        "Heart\tMild cardiomegaly observed\tH\n"
+        "Pleura\tNo effusion\t\n"
+        "Bones\tIntact, no fractures\t\n"
+        "IMPRESSION\tPneumonia with cardiomegaly\tH\n"
     )
 
 def build_meds_prompt() -> str:
@@ -259,6 +253,13 @@ def parse_tsv_extraction(text: str) -> Optional[Dict[str, Any]]:
              parts = [p.strip() for p in line.split(":", 1)]
         else:
             parts = [p.strip() for p in re.split(r"\s{2,}", line) if p.strip()]
+            
+        if len(parts) < 2:
+            # Try splitting by colon if it's "Anatomy: Finding" format
+            if ":" in clean_line:
+                parts = [p.strip() for p in clean_line.split(":", 1)]
+            else:
+                continue
             
         if len(parts) < 2:
             continue
