@@ -4,7 +4,7 @@ import { Terminal } from 'lucide-react';
 
 const ActivityLog = ({ logs, isProcessing }) => {
   return (
-    <div className="flex flex-col bg-[#0d1117] rounded-3xl border border-white/10 shadow-2xl font-mono text-sm relative group">
+    <div className="flex flex-col bg-[#0d1117] rounded-3xl border border-white/10 shadow-2xl font-mono text-sm relative group h-full overflow-hidden">
       {/* Mac-style header */}
       <div className="px-5 py-4 bg-white/5 border-b border-black/50 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
@@ -31,9 +31,9 @@ const ActivityLog = ({ logs, isProcessing }) => {
         </div>
       </div>
 
-      <div className="p-6 space-y-3">
+      <div className="p-6 space-y-3 overflow-hidden flex-1">
         {!isProcessing && logs.length === 0 && (
-          <div className="h-48 flex flex-col items-center justify-center text-muted-foreground/30 gap-4">
+          <div className="h-full flex flex-col items-center justify-center text-muted-foreground/30 gap-4">
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse-slow"></div>
               <Terminal size={48} className="relative" />
@@ -42,7 +42,7 @@ const ActivityLog = ({ logs, isProcessing }) => {
           </div>
         )}
         <AnimatePresence>
-          {[...logs].reverse().map((log, index) => (
+          {logs.slice(-12).reverse().map((log, index) => (
             <Motion.div 
               key={`${log.time}-${index}`}
               initial={{ opacity: 0, x: -10 }}
@@ -57,7 +57,7 @@ const ActivityLog = ({ logs, isProcessing }) => {
                   log.message.includes("Error") ? "text-destructive" : 
                   log.message.includes("Success") ? "text-success font-semibold" : 
                   "text-gray-300"
-              } break-all`}>
+              } break-all line-clamp-1`}>
                 {log.message}
               </span>
             </Motion.div>
