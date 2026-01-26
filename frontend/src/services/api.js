@@ -50,6 +50,23 @@ export const fetchSubmissions = async (apiKey, limit = 15) => {
         }
     });
 
+    return await response.json();
+};
+
+/**
+ * Rerun MedGemma pipeline for an existing submission
+ * @param {string} submissionId 
+ * @param {string} apiKey 
+ * @returns {Promise<Object>}
+ */
+export const rerunMedGemma = async (submissionId, apiKey) => {
+    const response = await fetch(`${API_URL}/api/v1/rerun/${submissionId}`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`
+        }
+    });
+
     if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Server Error (${response.status}): ${errorText}`);

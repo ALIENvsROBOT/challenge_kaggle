@@ -42,7 +42,7 @@ from backend.medgemma.fhir import (
     validate_bundle_minimal
 )
 from backend.medgemma.utils import extract_json_candidate
-from backend.medgemma.persistence import init_db, save_submission
+from backend.medgemma.persistence import init_db, save_submission, get_submission, update_submission
 
 # --- Configuration ---
 API_TITLE = "MedGemma FHIR-Bridge API"
@@ -365,6 +365,62 @@ async def list_submissions(limit: int = 15):
     from backend.medgemma.persistence import get_submissions
     data = get_submissions(limit=limit)
     return data
+
+@app.post("/api/v1/rerun/{submission_id}", dependencies=[Depends(verify_api_key)])
+async def rerun_medgemma(submission_id: str):
+    """
+    **Smart Rerun Feature**
+    
+    Re-processes an existing clinical record through the MedGemma pipeline.
+    This is useful if the initial extraction was incomplete or if you want
+    to re-analyze the scan with updated diagnostic rules.
+    """
+    # 1. Fetch existing submission record
+    sub = get_submission(submission_id)
+    if not sub:
+        raise HTTPException(404, f"Submission {submission_id} not found.")
+    
+    file_path_str = sub.get("file_path")
+    if not file_path_str:
+        raise HTTPException(422, "No file path associated with this record. Cannot rerun.")
+    
+    # In case of multiple files (comma separated in original_filename, but we store main path)
+    # For now we process the secondary files if we can find them in the same directory with matching uuid
+    # Simplification: process the single primary file_path
+    
+    try:
+        file_path = Path(file_path_str)
+        if not file_path.exists():
+            raise HTTPException(404, "Original document file was deleted from disk.")
+
+        # 2. Rerun processing
+        logger.info(f"Rerunning MedGemma for submission: {submission_id}")
+        fhir_bundle = process_files_sync([file_path])
+        
+        # 3. Inject original metadata
+        if fhir_bundle.get("entry"):
+            for entry in fhir_bundle["entry"]:
+                if entry.get("resource", {}).get("resourceType") == "Patient":
+                    entry["resource"]["id"] = sub.get("patient_id")
+                    entry["resource"].setdefault("identifier", []).append({
+                        "system": "urn:uuid:submission-id",
+                        "value": submission_id
+                    })
+
+        # 4. Update Database
+        updated = update_submission(submission_id, fhir_bundle)
+        if not updated:
+            raise HTTPException(500, "Failed to update record in database.")
+            
+        return {
+            "submission_id": submission_id,
+            "status": "re-processed",
+            "fhir_bundle": fhir_bundle
+        }
+
+    except Exception as e:
+        logger.error(f"Rerun Failed for {submission_id}: {e}")
+        raise HTTPException(500, f"Rerun Failed: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

@@ -16,7 +16,8 @@ import {
   Thermometer,
   Calendar,
   Copy,
-  Check
+  Check,
+  RefreshCw
 } from 'lucide-react';
 
 const ClinicalCard = ({ title, value, unit, referenceRange, status, type }) => {
@@ -62,11 +63,13 @@ const ClinicalCard = ({ title, value, unit, referenceRange, status, type }) => {
 
 const FHIRViewer = ({ data, onClose }) => {
   const [viewMode, setViewMode] = useState('clinical'); // 'clinical' or 'json'
-  const [activeTab, setActiveTab] = useState('vitals'); // 'vitals', 'meds', 'labs', 'imaging'
+  const [activeTab, setActiveTab] = useState('labs'); // 'labs', 'imaging', 'meds', 'vitals'
   const [copied, setCopied] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
+  const [localData, setLocalData] = useState(data); // Track data locally if we reload
   
   // Extract data from FHIR Bundle safely
-  const resources = data?.fhir_bundle?.entry?.map(e => e.resource) || [];
+  const resources = localData?.fhir_bundle?.entry?.map(e => e.resource) || [];
   
   // Group Resources
   const observations = resources.filter(r => r.resourceType === 'Observation');
@@ -77,7 +80,7 @@ const FHIRViewer = ({ data, onClose }) => {
   const patient = resources.find(r => r.resourceType === 'Patient');
 
   const handleCopy = () => {
-    const jsonStr = JSON.stringify(data?.fhir_bundle || {}, null, 2);
+    const jsonStr = JSON.stringify(localData?.fhir_bundle || {}, null, 2);
     navigator.clipboard.writeText(jsonStr);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -92,16 +95,42 @@ const FHIRViewer = ({ data, onClose }) => {
 
   // Smart Default Tab
   React.useEffect(() => {
-    if (activeTab === 'vitals' && observations.filter(o => (o.code?.text || '').toLowerCase().match(/pressure|heart|temp|weight|height|bmi|rate/)).length === 0) {
-      if (observations.some(o => (o.category?.[0]?.coding?.[0]?.code || '').toLowerCase() === 'imaging')) {
+    const imagingCount = observations.filter(o => {
+        const cat = (o.category?.[0]?.coding?.[0]?.code || '').toLowerCase();
+        return cat === 'imaging';
+    }).length;
+    
+    if (imagingCount > 0) {
         setActiveTab('imaging');
-      } else if (observations.length > 0) {
+    } else if (observations.length > 0) {
         setActiveTab('labs');
-      } else if (medications.length > 0) {
+    } else if (medications.length > 0) {
         setActiveTab('meds');
-      }
+    } else {
+        setActiveTab('vitals');
     }
-  }, [data]);
+  }, [localData]);
+
+  const handleReload = async () => {
+    if (isReloading) return;
+    setIsReloading(true);
+    try {
+        const { rerunMedGemma, getStoredApiKeys } = await import('../../services/api');
+        const keys = getStoredApiKeys();
+        if (keys.length > 0) {
+            const updated = await rerunMedGemma(localData.id, keys[0].key);
+            // Patch local data
+            setLocalData(prev => ({
+                ...prev,
+                fhir_bundle: updated.fhir_bundle
+            }));
+        }
+    } catch (error) {
+        console.error("Reload failed:", error);
+    } finally {
+        setIsReloading(false);
+    }
+  };
 
   const getUnit = (obs) => {
     if (obs.valueQuantity) return obs.valueQuantity.unit;
@@ -134,7 +163,7 @@ const FHIRViewer = ({ data, onClose }) => {
                  {patient?.name?.[0]?.given?.join(' ') || 'Unknown Patient'} {patient?.name?.[0]?.family || ''}
               </h2>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-mono bg-white/5 px-1.5 rounded text-white/60">ID: {data?.patient_id}</span>
+                <span className="font-mono bg-white/5 px-1.5 rounded text-white/60">ID: {localData?.patient_id}</span>
                 <span>•</span>
                 <span className="text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 size={10} /> FHIR R4 Validated
@@ -161,10 +190,21 @@ const FHIRViewer = ({ data, onClose }) => {
                  ? 'bg-primary text-white shadow-lg' 
                  : 'text-muted-foreground hover:text-white hover:bg-white/5'
                }`}
-             >
-               <Code size={14} /> Raw JSON
-             </button>
+              >
+                <Code size={14} /> Raw JSON
+              </button>
           </div>
+
+          <button 
+            onClick={handleReload}
+            disabled={isReloading}
+            className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-muted-foreground transition-all border border-white/5 ${
+                isReloading ? 'bg-primary/20 text-primary border-primary/20' : 'hover:bg-white/10 hover:text-white'
+            }`}
+            title="Rerun MedGemma Analysis"
+          >
+            <RefreshCw size={18} className={isReloading ? 'animate-spin' : ''} />
+          </button>
 
           <button 
             onClick={onClose}
@@ -183,12 +223,12 @@ const FHIRViewer = ({ data, onClose }) => {
                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                     <Eye size={14} /> Source Documents
                  </h3>
-                 <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/60">BATCH ID: {data?.id?.slice(0,8)}</span>
+                 <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/60">BATCH ID: {localData?.id?.slice(0,8)}</span>
               </div>
               <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-[url('/grid-pattern.svg')] bg-[length:20px_20px]">
-                 {data?.image_url ? (
+                 {localData?.image_url ? (
                     <img 
-                      src={data.image_url} 
+                      src={localData.image_url} 
                       alt="Clinical Record" 
                       className="max-w-full rounded-lg border border-white/10 shadow-2xl"
                     />
@@ -197,7 +237,7 @@ const FHIRViewer = ({ data, onClose }) => {
                        <div className="bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
                           <FileJson size={32} />
                        </div>
-                       <h4 className="text-white font-medium mb-1">{data?.filename}</h4>
+                       <h4 className="text-white font-medium mb-1">{localData?.filename}</h4>
                        <p className="text-xs text-muted-foreground">Original source file processed by MedGemma 1.5</p>
                        <div className="mt-4 flex gap-2 justify-center">
                           <button className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
@@ -215,8 +255,8 @@ const FHIRViewer = ({ data, onClose }) => {
              {viewMode === 'clinical' && (
                <div className="h-full flex flex-col">
                   {/* Category Tabs */}
-                  <div className="px-6 pt-6 pb-2 flex gap-6 border-b border-white/5 overflow-x-auto">
-                    {['vitals', 'labs', 'imaging', 'meds'].map((tab) => (
+                   <div className="px-6 pt-6 pb-2 flex gap-6 border-b border-white/5 overflow-x-auto">
+                    {['labs', 'imaging', 'meds', 'vitals'].map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -224,10 +264,10 @@ const FHIRViewer = ({ data, onClose }) => {
                           activeTab === tab ? 'text-white' : 'text-muted-foreground hover:text-white/70'
                         }`}
                       >
-                        {tab === 'vitals' && 'Vital Signs'}
                         {tab === 'labs' && 'Lab Results'}
                         {tab === 'imaging' && 'Radiology'}
                         {tab === 'meds' && 'Medications'}
+                        {tab === 'vitals' && 'Vital Signs'}
                         {activeTab === tab && (
                           <Motion.div layoutId="underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
                         )}
@@ -375,9 +415,9 @@ const FHIRViewer = ({ data, onClose }) => {
                         )}
                       </button>
                    </div>
-                   <pre className="text-xs font-mono text-blue-300 leading-relaxed">
-                      {JSON.stringify(data?.fhir_bundle || {}, null, 2)}
-                   </pre>
+                    <pre className="text-xs font-mono text-blue-300 leading-relaxed">
+                       {JSON.stringify(localData?.fhir_bundle || {}, null, 2)}
+                    </pre>
                 </div>
              )}
 

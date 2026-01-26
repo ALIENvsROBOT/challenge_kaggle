@@ -123,3 +123,46 @@ def get_submissions(limit: int = 20) -> list:
     except Exception as e:
         logger.error(f"Failed to fetch submissions: {e}")
         return []
+
+def get_submission(submission_id: str) -> Dict[str, Any]:
+    """Retrieves a single submission by ID."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, patient_id, original_filename, file_path, fhir_bundle, status FROM submissions WHERE id = %s",
+            (submission_id,)
+        )
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row:
+            return {
+                "id": str(row[0]),
+                "patient_id": row[1],
+                "filename": row[2],
+                "file_path": row[3],
+                "fhir_bundle": row[4],
+                "status": row[5]
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Failed to fetch submission {submission_id}: {e}")
+        return None
+
+def update_submission(submission_id: str, fhir_bundle: Dict[str, Any]) -> bool:
+    """Updates the FHIR bundle for an existing submission."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE submissions SET fhir_bundle = %s, status = %s WHERE id = %s",
+            (Json(fhir_bundle), "completed", submission_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update submission {submission_id}: {e}")
+        return False
