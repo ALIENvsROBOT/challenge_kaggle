@@ -89,40 +89,62 @@ def build_lab_prompt() -> str:
 def build_radiology_prompt() -> str:
     """Step 2b: Extract Radiology Findings (Expert Diagnostic Prompt)"""
     return (
-        "You are an expert board-certified radiologist. Analyze this medical scan (X-Ray/CT/MRI) with high precision.\n"
+        "You are a Senior Radiologist Consultant. Your task is to extract structured anatomical findings from this medical scan report (CT, MRI, X-Ray, Ultrasound).\n"
         "\n"
-        "Metadata:\n"
-        "PATIENT_NAME: <extract real full name from report/ID tag>\n"
-        "MODALITY: IMAGING\n"
+        "1. **CLASSIFY THE SCAN**: First, identify the MODALITY (e.g., MRI) and REGION (e.g., Brain, Lumbar Spine, Abdomen).\n"
+        "2. **EXTRACT FINDINGS**: For every anatomical structure mentioned, status its condition.\n"
+        "3. **EXTRACT CONCLUSION**: Copy the 'IMPRESSION' or 'CONCLUSION' section verbatim. This is critical.\n"
         "\n"
-        "Task: Generate a detailed anatomical report in TSV format.\n"
-        "Header: ANATOMY\tFINDING\tFLAG\n"
+        "Metadata Block:\n"
+        "PATIENT_NAME: <name>\n"
+        "MODALITY: <imaging type>\n"
         "\n"
-        "Clinical Guidelines for Extraction:\n"
-        "1. LUNGS: Look for opacities, consolidations, or infiltrates. If seen, specify 'Pneumonia' or 'Internal Fluid' in findings.\n"
-        "2. HEART: Measure cardiac silhouette. If enlarged, mark 'Cardiomegaly' and FLAG as 'H'.\n"
-        "3. PLEURA: Check costophrenic angles for blunting or effusions.\n"
-        "4. IMPRESSION: Synthesize all findings into a final diagnosis (e.g., 'Primary Pneumonia', 'Congestive Heart Failure').\n"
+        "Structure the output as a TSV table with header: ANATOMY\\tFINDING\\tFLAG\n"
         "\n"
-        "Rules:\n"
-        "- FLAG: 'H' for ANY abnormal finding, leave empty for normal/clear.\n"
-        "- Focus on anatomical accuracy.\n"
-        "- Output TSV only after the metadata block."
+        "Extraction Guidelines:\n"
+        "- **BRAIN**: Parenchyma, Ventricles, Midline Shift, Infarcts/Hemorrhage.\n"
+        "- **SPINE**: Alignment, Disc Height, Vertebral Body, Cord Signal.\n"
+        "- **CHEST**: Lungs, Heart, Mediastinum, Pleura.\n"
+        "- **ABDOMEN**: Liver, Spleen, Kidneys, Pancreas, Bowel Loops.\n"
+        "- **IMPRESSION**: Use 'IMPRESSION' as the Anatomy name and the full concluding text as the Finding.\n"
+        "\n"
+        "Flag Rules:\n"
+        "- Normal/Unremarkable -> Leave Flag empty.\n"
+        "- Fracture, Mass, Edema, Infarct, Herniation -> Flag 'H'.\n"
+        "\n"
+        "Output Format Example:\n"
+        "PATIENT_NAME: Jane Doe\n"
+        "MODALITY: MRI BRAIN\n"
+        "ANATOMY\tFINDING\tFLAG\n"
+        "Cerebral Parenchyma\tNormal signal intensity\t\n"
+        "Ventricles\tMild dilation observed\tH\n"
+        "Midline Structures\tNo shift\t\n"
+        "IMPRESSION\tMild hydrocephalus without acute hemorrhage.\tH\n"
     )
 
 def build_meds_prompt() -> str:
     """Step 2c: Extract Medications"""
     return (
-        "Extract medications from this PRESCRIPTION as TSV.\n"
-        "Header: DRUG\tDOSAGE\tFREQUENCY\tDURATION\n"
+        "You are an expert pharmacist. Extract the medication list from this prescription into a STRICT TSV format.\n"
+        "\n"
+        "1. **METADATA**: Extract Patient Name and Date if visible.\n"
+        "2. **DRUGS**: List every drug found.\n"
         "\n"
         "Metadata:\n"
         "PATIENT_NAME: <name>\n"
         "MODALITY: MEDS\n"
         "\n"
-        "Rules:\n"
-        "- One line per drug.\n"
-        "- If info is missing, leave blank.\n"
+        "Header: DRUG\tDOSAGE\tFREQUENCY\n"
+        "\n"
+        "Guidelines:\n"
+        "- **DRUG**: Name of the medicine (e.g., 'Amoxicillin').\n"
+        "- **DOSAGE**: Strength (e.g., '500mg').\n"
+        "- **FREQUENCY**: How often (e.g., 'Twice Daily', 'BD', 'TID').\n"
+        "- If dosage/freq are combined, split them if possible, or put remaining info in FREQUENCY.\n"
+        "\n"
+        "CRITICAL:\n"
+        "- Extract ONLY real text. Do NOT invent drugs.\n"
+        "- Output TSV only.\n"
     )
 
 def build_extraction_prompt() -> str:
@@ -179,7 +201,9 @@ def parse_tsv_extraction(text: str) -> Optional[Dict[str, Any]]:
     header_idx = None
 
     # Valid headers we recognize
-    valid_cols = {"NAME", "TEST", "ANALYTE", "ANATOMY", "REGION", "FINDING", "OBSERVATION"}
+    valid_cols = {"NAME", "TEST", "ANALYTE", "ANATOMY", "REGION", "FINDING", "OBSERVATION", "DRUG", "MEDICATION"}
+
+    detected_modality = None
 
     for idx, line in enumerate(lines):
         upper = line.upper().strip()
@@ -203,7 +227,12 @@ def parse_tsv_extraction(text: str) -> Optional[Dict[str, Any]]:
         parts = [p.strip().upper() for p in re.split(r"[\t|]|\s{2,}", line) if p.strip()]
         if len(parts) >= 2 and parts[0] in valid_cols:
             header_idx = idx
+            if parts[0] in {"ANATOMY", "REGION", "FINDING"}:
+               detected_modality = "RADIOLOGY"
             break
+            
+    if detected_modality and not patient.get("modality"):
+        patient["modality"] = detected_modality
 
     # If no header found, assume data starts after metadata blocks
     # We will just look for ANYTHING that looks like "String [tab] String"
