@@ -34,88 +34,94 @@ def format_history_summary(history: List[Dict[str, Any]]) -> str:
     return "\n".join(lines) if lines else "none"
 
 
-def build_extraction_prompt() -> str:
-    format_pref = os.getenv("medGemma_extraction_format", "tsv").strip().lower()
-    compact = os.getenv("medGemma_compact_extraction", "1").strip().lower() in {"1", "true", "yes"}
-    strict = os.getenv("medGemma_strict_extraction", "1").strip().lower() in {"1", "true", "yes"}
-    if format_pref == "tsv":
-        rules = (
-            "Extract ALL lab test rows from the image and output TSV ONLY (no markdown, no analysis).\n"
-            "Header (must be exactly this):\n"
-            "NAME\tVALUE\tUNIT\tREF_LOW\tREF_HIGH\tFLAG\n"
-            "Then one line per test row. Use empty fields if ref range/flag is not shown.\n"
-            "Also include optional metadata lines before the header:\n"
-            "PATIENT_NAME: <full name>\n"
-            "SAMPLE_ID: <sample id>\n"
-            "REPORT_DATE: <YYYY-MM-DD>\n"
-            "Rules:\n"
-            "- Include EVERY row from the lab table (not just one).\n"
-            "- If a test name or value is unclear, omit that row.\n"
-            "- Use numbers for values when possible; otherwise use strings.\n"
-            "- Include REF_LOW/REF_HIGH/FLAG only if visible.\n"
-            "- Do NOT reuse any example values.\n"
-            "- Output must start with PATIENT_NAME/SAMPLE_ID/REPORT_DATE (optional) or the header.\n"
-            "- If the row is a header (like 'COMPLETE BLOOD COUNT'), do NOT output it."
-        )
-        if strict:
-            rules += (
-                "\nStrict completeness rules:\n"
-                "- Include ALL sections (CBC, Differential Count, Platelets, Absolute Counts) if present.\n"
-                "- Do NOT output section headers as rows.\n"
-                "- If units appear once in a column header, apply to each row.\n"
-                "- If value contains [H]/[L], move it to FLAG and keep VALUE numeric.\n"
-                "- Separate Ref Range into REF_LOW and REF_HIGH by splitting on '-'.\n"
-                "Checklist (include if present): Hb, Total RBC, HCT/PCV, MCV, MCH, MCHC, RDW-CV, "
-                "Total WBC, Neutrophils, Lymphocytes, Eosinophils, Monocytes, Basophils, "
-                "Platelet Count, MPV, Immature Platelet Fraction, "
-                "Absolute Neutrophils/Lymphocytes/Eosinophils/Monocytes/Basophils."
-            )
-        return rules
-    if compact:
-        return (
-            "Extract ALL lab test rows from the image and output JSON ONLY.\n"
-            "Use this compact schema:\n"
-            "{"
-            "\"p\": {\"id\":\"patient-1\", \"name\":\"<full name>\", \"g\":\"male|female|other|unknown\", "
-            "\"b\":\"YYYY-MM-DD\", \"id2\":\"<sample id or patient id if shown>\"},"
-            "\"obs\": ["
-            "{\"n\":\"<test name>\", \"v\": <number>, \"u\":\"<unit>\", "
-            "\"lo\": <number>, \"hi\": <number>, \"fl\":\"H|L|\"}"
-            "],"
-            "\"d\":\"YYYY-MM-DD\""
-            "}\n"
-            "Rules:\n"
-            "- Include EVERY row from the lab table (not just one)."
-            "- If a test name or value is unclear, omit that row."
-            "- Use numbers for values when possible; otherwise use strings."
-            "- Include lo/hi/fl only if visible."
-            "- Include g or b ONLY if explicitly shown; do not infer."
-            "- Do NOT reuse any example values."
-            "- Output must start with '{' and end with '}'."
-        )
+# --- PROMPT FACTORY ---
+
+def build_classification_prompt() -> str:
+    """Step 1: Identify the Document Type"""
     return (
-        "Extract ALL lab test rows from the image and output JSON ONLY (no markdown, no analysis).\n"
-        "Return an object with keys: patient, observations, report_date.\n"
-        "Schema:\n"
-        "{"
-        "\"patient\": {\"id\":\"patient-1\", \"name\": {\"given\":[...], \"family\":\"...\"}, "
-        "\"gender\":\"male|female|other|unknown\", \"birthDate\":\"YYYY-MM-DD\", "
-        "\"identifier\":\"<sample id or patient id if shown>\"},"
-        "\"observations\": ["
-        "{\"name\":\"<test name>\", \"value\": <number>, \"unit\":\"<unit>\", "
-        "\"ref_low\": <number>, \"ref_high\": <number>, \"flag\":\"H|L|\"}"
-        "],"
-        "\"report_date\":\"YYYY-MM-DD\""
-        "}\n"
+        "Analyze the medical image(s). Classify the document type.\n"
+        "Return ONLY one of these strings:\n"
+        "LAB_REPORT\n"
+        "RADIOLOGY_REPORT   (X-Ray, CT, MRI, Ultrasound)\n"
+        "PRESCRIPTION       (Medication list)\n"
+        "OTHER\n"
+        "\n"
         "Rules:\n"
-        "- Include EVERY row from the lab table (not just one)."
-        "- If a test name or value is unclear, omit that row."
-        "- Use numbers for values when possible; otherwise use strings."
-        "- Include ref_low/ref_high and flag only if visible."
-        "- Include gender or birthDate ONLY if explicitly shown; do not infer."
-        "- Do NOT reuse any example values."
-        "- Output must start with '{' and end with '}'."
+        "- If it contains tabular blood test results, choose LAB_REPORT.\n"
+        "- If it contains an image of a scan or text about 'Lungs', 'Heart', 'Bones' findings, choose RADIOLOGY_REPORT.\n"
+        "- If it lists drugs/dosage, choose PRESCRIPTION.\n"
+        "- Output NOTHING else. No markdown."
     )
+
+def build_lab_prompt() -> str:
+    """Step 2a: Extract Lab Data (Strict TSV)"""
+    return (
+        "You are an expert medical OCR assistant. Your task is to extract the lab results from this image into a STRICT TSV (Tab Separated Values) format.\n"
+        "\n"
+        "1.  **METADATA**: First, find and extract these fields from the top of the report:\n"
+        "    *   PATIENT_NAME: <Full Name>\n"
+        "    *   SAMPLE_ID: <ID Number>\n"
+        "    *   REPORT_DATE: <Date>\n"
+        "    *   MODALITY: LAB\n"
+        "\n"
+        "2.  **TABLE DATA**: Extract every single row from the test results table.\n"
+        "    *   **Header**: NAME\tVALUE\tUNIT\tREF_RANGE\tFLAG\n"
+        "    *   **FLAG Column**: If the result is marked with 'H', 'High', 'L', 'Low', or bold/star, put 'H' or 'L' in this column. Otherwise leave it empty.\n"
+        "    *   **REF_RANGE Column**: Extract the reference range string exactly as shown (e.g. '13.0 - 17.0').\n"
+        "    *   **VALUE Column**: Extract the number only. Remove any units or flags from this column.\n"
+        "\n"
+        "Output Format Example:\n"
+        "PATIENT_NAME: John Doe\n"
+        "SAMPLE_ID: 123456\n"
+        "REPORT_DATE: 2024-01-01\n"
+        "MODALITY: LAB\n"
+        "NAME\tVALUE\tUNIT\tREF_RANGE\tFLAG\n"
+        "Haemoglobin\t14.2\tg/dl\t13.0-17.0\t\n"
+        "WBC Count\t12000\t/cumm\t4000-11000\tH\n"
+    )
+
+def build_radiology_prompt() -> str:
+    """Step 2b: Extract Radiology Findings (Expert Diagnostic Prompt)"""
+    return (
+        "You are an expert board-certified radiologist. Analyze this medical scan (X-Ray/CT/MRI) with high precision.\n"
+        "\n"
+        "Metadata:\n"
+        "PATIENT_NAME: <extract real full name from report/ID tag>\n"
+        "MODALITY: IMAGING\n"
+        "\n"
+        "Task: Generate a detailed anatomical report in TSV format.\n"
+        "Header: ANATOMY\tFINDING\tFLAG\n"
+        "\n"
+        "Clinical Guidelines for Extraction:\n"
+        "1. LUNGS: Look for opacities, consolidations, or infiltrates. If seen, specify 'Pneumonia' or 'Internal Fluid' in findings.\n"
+        "2. HEART: Measure cardiac silhouette. If enlarged, mark 'Cardiomegaly' and FLAG as 'H'.\n"
+        "3. PLEURA: Check costophrenic angles for blunting or effusions.\n"
+        "4. IMPRESSION: Synthesize all findings into a final diagnosis (e.g., 'Primary Pneumonia', 'Congestive Heart Failure').\n"
+        "\n"
+        "Rules:\n"
+        "- FLAG: 'H' for ANY abnormal finding, leave empty for normal/clear.\n"
+        "- Focus on anatomical accuracy.\n"
+        "- Output TSV only after the metadata block."
+    )
+
+def build_meds_prompt() -> str:
+    """Step 2c: Extract Medications"""
+    return (
+        "Extract medications from this PRESCRIPTION as TSV.\n"
+        "Header: DRUG\tDOSAGE\tFREQUENCY\tDURATION\n"
+        "\n"
+        "Metadata:\n"
+        "PATIENT_NAME: <name>\n"
+        "MODALITY: MEDS\n"
+        "\n"
+        "Rules:\n"
+        "- One line per drug.\n"
+        "- If info is missing, leave blank.\n"
+    )
+
+def build_extraction_prompt() -> str:
+    # Deprecated single-shot prompt, forwarded to Lab for backward compatibility if needed
+    return build_lab_prompt()
 
 
 def build_extraction_repair_prompt(prev_output: str, errors: List[str], history: List[Dict[str, Any]]) -> str:
@@ -166,72 +172,114 @@ def parse_tsv_extraction(text: str) -> Optional[Dict[str, Any]]:
     report_date = None
     header_idx = None
 
+    # Valid headers we recognize
+    valid_cols = {"NAME", "TEST", "ANALYTE", "ANATOMY", "REGION", "FINDING", "OBSERVATION"}
+
     for idx, line in enumerate(lines):
         upper = line.upper().strip()
-        if upper == "TSV":
-            continue
+        if upper == "TSV": continue
         if upper.startswith("PATIENT_NAME:"):
             patient["name"] = line.split(":", 1)[1].strip()
             continue
-        if upper.startswith("SAMPLE_ID:"):
+        if upper.startswith(("SAMPLE_ID:", "ID:", "MRN:")):
             patient["identifier"] = line.split(":", 1)[1].strip()
             continue
         if upper.startswith("REPORT_DATE:"):
             report_date = line.split(":", 1)[1].strip()
             continue
-        # Relaxed Header Check: Look for NAME and VALUE, or simple column headers
-        if "NAME" in upper and "VALUE" in upper:
+        if upper.startswith("MODALITY:"):
+            patient["modality"] = line.split(":", 1)[1].strip().upper()
+            continue
+        
+        # Check for header row
+        import re
+        parts = [p.strip().upper() for p in re.split(r"[\t|]|\s{2,}", line) if p.strip()]
+        if len(parts) >= 2 and parts[0] in valid_cols:
             header_idx = idx
             break
 
-    if header_idx is None:
-        # Fallback: scans for the first line that looks like a TSV header or data
-        # If we can't find a header, we assume the first line that has tabs or distinct columns might be it 
-        # or the one after it is data.
-        header_idx = -1
-
-    section_headers = {
-        "COMPLETE BLOOD COUNT",
-        "DIFFERENTIAL COUNT",
-        "PLATELETS",
-        "ABSOLUTE COUNTS",
-    }
-    import re
-    for line in lines[header_idx + 1 :]:
-        upper = line.strip().upper()
-        has_columns = ("\t" in line) or ("|" in line) or bool(re.search(r"\s{2,}", line))
-        if (upper in section_headers or any(upper.startswith(h) for h in section_headers)) and not has_columns:
+    # If no header found, assume data starts after metadata blocks
+    # We will just look for ANYTHING that looks like "String [tab] String"
+    start_idx = header_idx + 1 if header_idx is not None else 0
+    
+    for line in lines[start_idx:]:
+        clean_line = line.strip()
+        if not clean_line: continue
+        
+        # Skip metadata lines if we missed them above
+        if ":" in clean_line and clean_line.split(":")[0].upper().rstrip(":").endswith(("NAME", "ID", "MRN", "DATE", "MODALITY")):
             continue
-        sep = "\t" if "\t" in line else ("|" if "|" in line else None)
-        if sep:
-            parts = [p.strip() for p in line.split(sep)]
+
+        # Split by tab, pipe, or double-space
+        if "\t" in line:
+            parts = [p.strip() for p in line.split("\t")]
+        elif "|" in line:
+            parts = [p.strip() for p in line.split("|")]
+        elif ":" in line and not line.strip().upper().endswith(":"):
+             # Fallback for "Key: Value" format (common in Radiology output)
+             # But be careful not to split timestamps like 12:00
+             # Heuristic: split on FIRST colon
+             parts = [p.strip() for p in line.split(":", 1)]
         else:
-            parts = [p.strip() for p in re.split(r"\s{2,}", line)]
-        if len(parts) < 3:
+            parts = [p.strip() for p in re.split(r"\s{2,}", line) if p.strip()]
+            
+        if len(parts) < 2:
             continue
-        if parts[0].lower() in {"name", "test", "analyte"}:
+            
+        # Ignore obvious header repeats
+        if parts[0].upper() in valid_cols:
             continue
-        while len(parts) < 6:
-            parts.append("")
-        name, value, unit, ref_low, ref_high, flag = parts[:6]
+            
+        # Extract fields
+        name = parts[0]
+        val = parts[1]
+        
+        # Heuristic: If name looks like a finding key
+        if not patient.get("modality"):
+            if any(k in name.lower() for k in ["lung", "chest", "heart", "mediastinum", "bone", "fracture", "opacity", "impression"]):
+                 patient["modality"] = "X-RAY"
 
-        if unit.strip() in {"[H]", "[L]"} and ref_low:
-            flag = unit.strip()
-            unit = ref_low
-            ref_low = ref_high
-
-        obs: Dict[str, Any] = {"name": name, "value": value}
-        if unit:
-            obs["unit"] = unit
-        if ref_low and not ref_high and "-" in ref_low:
-            obs.update(parse_range(ref_low))
+        # Handle simplified radiology rows: Anatomy, Finding, [Flag]
+        unit = ""
+        ref_low = ""
+        ref_high = ""
+        flag = ""
+        
+        mod = (patient.get("modality") or "").upper()
+        if mod in ["IMAGING", "RADIOLOGY", "X-RAY", "CT", "MRI"]:
+            # Radiology format: ANATOMY, FINDING, FLAG
+            if len(parts) >= 3:
+                flag = parts[2].strip()
         else:
-            if ref_low:
-                obs["ref_low"] = ref_low
-            if ref_high:
-                obs["ref_high"] = ref_high
-        if flag:
-            obs["flag"] = flag
+            # Lab format: NAME, VALUE, UNIT, REF_RANGE, FLAG
+            if len(parts) >= 3:
+                unit = parts[2].strip()
+            if len(parts) >= 4:
+                rr_str = parts[3].strip()
+                parsed_range = parse_range(rr_str)
+                if parsed_range:
+                    ref_low = parsed_range.get("ref_low")
+                    ref_high = parsed_range.get("ref_high")
+            if len(parts) >= 5:
+                flag = parts[4].strip()
+        
+        # Backward compatibility for strict 6-column splitting
+        if len(parts) >= 6 and not ref_low and not ref_high:
+             unit, ref_low, ref_high, flag = parts[2:6]
+
+        obs = {"name": name, "value": val}
+        if unit: obs["unit"] = unit
+        
+        # Clean Flag
+        clean_flag = flag.strip().upper().replace("[", "").replace("]", "")
+        if clean_flag in {"H", "HIGH", "HI", "A", "ABN", "ABNORMAL"}:
+            obs["flag"] = "H"
+        elif clean_flag in {"L", "LOW", "LO"}:
+            obs["flag"] = "L"
+            
+        if ref_low: obs["ref_low"] = ref_low
+        if ref_high: obs["ref_high"] = ref_high
+        
         observations.append(obs)
 
     if not observations:

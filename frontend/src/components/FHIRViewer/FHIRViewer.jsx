@@ -14,7 +14,9 @@ import {
   Stethoscope,
   Pill,
   Thermometer,
-  Calendar
+  Calendar,
+  Copy,
+  Check
 } from 'lucide-react';
 
 const ClinicalCard = ({ title, value, unit, referenceRange, status, type }) => {
@@ -31,15 +33,18 @@ const ClinicalCard = ({ title, value, unit, referenceRange, status, type }) => {
           {type === 'vital' && <Activity size={12} className="text-emerald-400" />}
           {type === 'lab' && <Thermometer size={12} className="text-blue-400" />}
           {type === 'med' && <Pill size={12} className="text-violet-400" />}
+          {type === 'imaging' && <ZoomIn size={12} className="text-amber-400" />}
           {title}
         </span>
         {isAbnormal && <AlertTriangle size={14} className="text-red-500" />}
       </div>
       
-      <div className="flex items-baseline gap-1.5">
-        <span className={`text-2xl font-bold font-mono tracking-tight ${
-          isAbnormal ? 'text-red-400' : 'text-white'
-        }`}>
+      <div className="flex flex-col gap-1.5 mt-1">
+        <span className={`${
+           type === 'imaging' || (typeof value === 'string' && value.length > 20)
+           ? 'text-sm font-medium leading-relaxed font-sans' // Smaller text for long findings
+           : 'text-2xl font-bold font-mono tracking-tight'
+        } ${isAbnormal ? 'text-red-400' : 'text-white'}`}>
           {value}
         </span>
         {unit && <span className="text-xs text-muted-foreground font-medium">{unit}</span>}
@@ -57,7 +62,8 @@ const ClinicalCard = ({ title, value, unit, referenceRange, status, type }) => {
 
 const FHIRViewer = ({ data, onClose }) => {
   const [viewMode, setViewMode] = useState('clinical'); // 'clinical' or 'json'
-  const [activeTab, setActiveTab] = useState('vitals'); // 'vitals', 'meds', 'labs'
+  const [activeTab, setActiveTab] = useState('vitals'); // 'vitals', 'meds', 'labs', 'imaging'
+  const [copied, setCopied] = useState(false);
   
   // Extract data from FHIR Bundle safely
   const resources = data?.fhir_bundle?.entry?.map(e => e.resource) || [];
@@ -70,12 +76,32 @@ const FHIRViewer = ({ data, onClose }) => {
   );
   const patient = resources.find(r => r.resourceType === 'Patient');
 
+  const handleCopy = () => {
+    const jsonStr = JSON.stringify(data?.fhir_bundle || {}, null, 2);
+    navigator.clipboard.writeText(jsonStr);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   // Helper to safely get valueString or valueQuantity
   const getValue = (obs) => {
     if (obs.valueQuantity) return obs.valueQuantity.value;
     if (obs.valueString) return obs.valueString;
     return 'N/A';
   };
+
+  // Smart Default Tab
+  React.useEffect(() => {
+    if (activeTab === 'vitals' && observations.filter(o => (o.code?.text || '').toLowerCase().match(/pressure|heart|temp|weight|height|bmi|rate/)).length === 0) {
+      if (observations.some(o => (o.category?.[0]?.coding?.[0]?.code || '').toLowerCase() === 'imaging')) {
+        setActiveTab('imaging');
+      } else if (observations.length > 0) {
+        setActiveTab('labs');
+      } else if (medications.length > 0) {
+        setActiveTab('meds');
+      }
+    }
+  }, [data]);
 
   const getUnit = (obs) => {
     if (obs.valueQuantity) return obs.valueQuantity.unit;
@@ -97,7 +123,7 @@ const FHIRViewer = ({ data, onClose }) => {
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-7xl h-full max-h-[90vh] bg-[#0A0A0B] border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden relative"
       >
-        {/* Header */}
+        {/* Header content as before... */}
         <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-white/[0.02]">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
@@ -151,7 +177,7 @@ const FHIRViewer = ({ data, onClose }) => {
         {/* Content Area */}
         <div className="flex-1 flex overflow-hidden">
            
-           {/* Left Panel: Source Documents */}
+           {/* Left Panel: Source Documents content as before... */}
            <div className="w-[40%] border-r border-white/5 flex flex-col bg-black/20">
               <div className="p-4 border-b border-white/5 flex items-center justify-between">
                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
@@ -160,7 +186,6 @@ const FHIRViewer = ({ data, onClose }) => {
                  <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/60">BATCH ID: {data?.id?.slice(0,8)}</span>
               </div>
               <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-[url('/grid-pattern.svg')] bg-[length:20px_20px]">
-                 {/* Placeholder for actual image if available in API response, currently using iconic representation if no URL */}
                  {data?.image_url ? (
                     <img 
                       src={data.image_url} 
@@ -190,17 +215,18 @@ const FHIRViewer = ({ data, onClose }) => {
              {viewMode === 'clinical' && (
                <div className="h-full flex flex-col">
                   {/* Category Tabs */}
-                  <div className="px-6 pt-6 pb-2 flex gap-6 border-b border-white/5">
-                    {['vitals', 'labs', 'meds'].map((tab) => (
+                  <div className="px-6 pt-6 pb-2 flex gap-6 border-b border-white/5 overflow-x-auto">
+                    {['vitals', 'labs', 'imaging', 'meds'].map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`pb-3 text-sm font-medium transition-all relative ${
+                        className={`pb-3 text-sm font-medium transition-all relative shrink-0 ${
                           activeTab === tab ? 'text-white' : 'text-muted-foreground hover:text-white/70'
                         }`}
                       >
                         {tab === 'vitals' && 'Vital Signs'}
                         {tab === 'labs' && 'Lab Results'}
+                        {tab === 'imaging' && 'Radiology'}
                         {tab === 'meds' && 'Medications'}
                         {activeTab === tab && (
                           <Motion.div layoutId="underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
@@ -215,6 +241,8 @@ const FHIRViewer = ({ data, onClose }) => {
                         {/* VITALS TAB */}
                         {activeTab === 'vitals' && observations.filter(o => {
                            const txt = (o.code?.text || '').toLowerCase();
+                           const cat = (o.category?.[0]?.coding?.[0]?.code || '').toLowerCase();
+                           if (cat === 'imaging') return false;
                            return txt.includes('pressure') || txt.includes('heart') || txt.includes('temp') || txt.includes('weight') || txt.includes('height') || txt.includes('bmi') || txt.includes('rate');
                         }).map((obs, i) => (
                               <ClinicalCard 
@@ -230,10 +258,10 @@ const FHIRViewer = ({ data, onClose }) => {
                         {/* LABS TAB */}
                         {activeTab === 'labs' && observations.filter(o => {
                            const txt = (o.code?.text || '').toLowerCase();
-                           // Inverse of vitals: if it's not a common vital, assume it's a lab for now
+                           const cat = (o.category?.[0]?.coding?.[0]?.code || '').toLowerCase();
+                           if (cat === 'imaging') return false;
                            return !(txt.includes('pressure') || txt.includes('heart') || txt.includes('temp') || txt.includes('weight') || txt.includes('height') || txt.includes('bmi') || txt.includes('rate'));
                         }).map((obs, i) => {
-                           // Extract range text safely
                            const low = obs.referenceRange?.[0]?.low?.value;
                            const high = obs.referenceRange?.[0]?.high?.value;
                            const rangeText = (low !== undefined && high !== undefined) ? `${low} - ${high}` : (obs.referenceRange?.[0]?.text || "");
@@ -250,6 +278,22 @@ const FHIRViewer = ({ data, onClose }) => {
                               />
                            );
                         })}
+
+                        {/* IMAGING TAB */}
+                        {activeTab === 'imaging' && observations.filter(o => {
+                           const txt = (o.code?.text || '').toLowerCase();
+                           const cat = (o.category?.[0]?.coding?.[0]?.code || '').toLowerCase();
+                           return cat === 'imaging' || txt.includes('scan') || txt.includes('x-ray') || txt.includes('mri') || txt.includes('ct');
+                        }).map((obs, i) => (
+                              <ClinicalCard 
+                                key={i}
+                                type="imaging"
+                                title={obs.code?.text || 'Unknown Scan'}
+                                value={getValue(obs)}
+                                unit={getUnit(obs) || 'Finding'}
+                                referenceRange={obs.referenceRange?.[0]?.text}
+                              />
+                        ))}
                         
                         {activeTab === 'meds' && medications.map((med, i) => (
                            <div key={i} className="col-span-full p-4 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between">
@@ -262,7 +306,8 @@ const FHIRViewer = ({ data, onClose }) => {
                                     {med.medicationCodeableConcept?.text || "Unknown Medication"}
                                   </h4>
                                   <p className="text-xs text-muted-foreground">
-                                    Prescribed: {med.authoredOn || 'Unknown Date'} • Status: <span className="text-emerald-400 capitalize">{med.status}</span>
+                                    {med.dosageInstruction?.[0]?.text && <span className="text-emerald-400 font-medium">Dosage: {med.dosageInstruction[0].text} • </span>}
+                                    Prescribed: {med.authoredOn || 'Unknown Date'} • Status: <span className="capitalize">{med.status}</span>
                                   </p>
                                 </div>
                               </div>
@@ -285,6 +330,16 @@ const FHIRViewer = ({ data, onClose }) => {
                              <p>No lab results found. Check Vitals tab?</p>
                           </div>
                         )}
+                        {activeTab === 'imaging' && observations.every(o => {
+                          const txt = (o.code?.text || '').toLowerCase();
+                          const cat = (o.category?.[0]?.coding?.[0]?.code || '').toLowerCase();
+                          return !(cat === 'imaging' || txt.includes('scan') || txt.includes('x-ray') || txt.includes('mri') || txt.includes('ct'));
+                        }) && (
+                          <div className="col-span-full py-12 text-center text-muted-foreground flex flex-col items-center gap-2">
+                             <ZoomIn size={24} className="opacity-20" />
+                             <p>No imaging results found.</p>
+                          </div>
+                        )}
                         {activeTab === 'meds' && medications.length === 0 && (
                           <div className="col-span-full py-12 text-center text-muted-foreground flex flex-col items-center gap-2">
                              <Pill size={24} className="opacity-20" />
@@ -297,7 +352,29 @@ const FHIRViewer = ({ data, onClose }) => {
              )}
 
              {viewMode === 'json' && (
-                <div className="flex-1 overflow-auto p-6 bg-[#0F0F10] custom-scrollbar">
+                <div className="flex-1 overflow-auto p-6 bg-[#0F0F10] custom-scrollbar relative">
+                   <div className="absolute top-4 right-6 z-10">
+                      <button
+                        onClick={handleCopy}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all backdrop-blur-md border ${
+                          copied 
+                          ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                          : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        {copied ? (
+                          <>
+                            <Check size={14} />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={14} />
+                            Copy JSON
+                          </>
+                        )}
+                      </button>
+                   </div>
                    <pre className="text-xs font-mono text-blue-300 leading-relaxed">
                       {JSON.stringify(data?.fhir_bundle || {}, null, 2)}
                    </pre>

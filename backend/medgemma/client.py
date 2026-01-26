@@ -196,14 +196,20 @@ class MedGemmaClient:
     def _clean_response(self, content: str) -> str:
         content = self._exclude_thinking_component(content)
         content = self._strip_json_decoration(content)
-        start = content.find("{")
-        end = content.rfind("}")
-        if start != -1 and end != -1:
-            content = content[start : end + 1]
-        try:
-            return json.dumps(json.loads(content), separators=(",", ":"))
-        except Exception:
-            return content.strip()
+        
+        # Only clip to { } if it looks like we are aiming for JSON
+        # and there is actually a root-level object.
+        trimmed = content.strip()
+        if trimmed.startswith("{") and trimmed.endswith("}"):
+             try:
+                 return json.dumps(json.loads(trimmed), separators=(",", ":"))
+             except Exception:
+                 pass
+
+        # If it doesn't look like perfect JSON, don't clip it! 
+        # Slicing from first '{' to last '}' can destroy TSV if the model 
+        # includes braces in metadata or text.
+        return content.strip()
 
     def _exclude_thinking_component(self, text: str) -> str:
         import re

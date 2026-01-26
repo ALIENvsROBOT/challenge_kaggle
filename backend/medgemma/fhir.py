@@ -10,6 +10,7 @@ Key Features:
 - Strict Type Checking: Ensures `valueQuantity` and `code` follow the specific nesting required by FHIR.
 """
 import os
+import re
 from typing import Any, Dict, List
 
 from .utils import normalize_date, normalize_unit, split_value_unit
@@ -33,7 +34,7 @@ def validate_bundle_minimal(bundle: Dict[str, Any]) -> List[str]:
     allow_vq_codes = os.getenv("medGemma_allow_vq_codes", "0").strip().lower() in {"1", "true", "yes"}
     allow_vq_comparator = os.getenv("medGemma_allow_vq_comparator", "0").strip().lower() in {"1", "true", "yes"}
     strict_placeholders = os.getenv("medGemma_strict_placeholders", "1").strip().lower() in {"1", "true", "yes"}
-    min_observations = int(os.getenv("medGemma_min_observations", "3"))
+    min_observations = int(os.getenv("medGemma_min_observations", "1"))
 
     obs_count = 0
     for i, item in enumerate(entry, start=1):
@@ -259,8 +260,38 @@ def bundle_from_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
     }
 
     compute_flags = os.getenv("medGemma_compute_flags", "1").strip().lower() in {"1", "true", "yes"}
+    modality = patient.get("modality", "LAB")
+    obs_category = "laboratory"
+    obs_display = "Laboratory"
+    if modality in ["X-RAY", "XRAY", "CT", "MRI", "IMAGING"]:
+        obs_category = "imaging"
+        obs_display = "Imaging"
+
     for idx, o in enumerate(observations, start=1):
         name = o.get("name", "")
+        
+        if modality == "MEDS":
+            # Map Prescription to MedicationRequest
+            med = {
+                "resourceType": "MedicationRequest",
+                "id": f"med-{idx}",
+                "status": "active",
+                "intent": "order",
+                "medicationCodeableConcept": {
+                    "text": name
+                },
+                "subject": {"reference": "Patient/patient-1"},
+                "dosageInstruction": [
+                    {
+                        "text": f"{o.get('value', '')} {o.get('unit', '')}".strip()
+                    }
+                ]
+            }
+            if report_date:
+                med["authoredOn"] = report_date
+            bundle["entry"].append({"resource": med})
+            continue
+
         clean_name = name.lower().strip()
         loinc_code = LOINC_MAPPING.get(clean_name)
         
@@ -273,8 +304,8 @@ def bundle_from_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
                     "coding": [
                         {
                             "system": "http://terminology.hl7.org/CodeSystem/observation-category",
-                            "code": "laboratory",
-                            "display": "Laboratory"
+                            "code": obs_category,
+                            "display": obs_display
                         }
                     ]
                 }
@@ -295,74 +326,92 @@ def bundle_from_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
 
         val = o.get("value")
         # FHIR PERFECTION: valueQuantity MUST be a number. Use valueString for text like "Verified"
+        val_numeric = None
         if isinstance(val, (int, float)):
-            obs["valueQuantity"] = {"value": val}
+            val_numeric = float(val)
+            obs["valueQuantity"] = {"value": val_numeric}
             if o.get("unit"):
                 obs["valueQuantity"]["unit"] = normalize_unit(o.get("unit"))
+        elif isinstance(val, str):
+            # Try to cast to float
+            try:
+                # Remove any stray commas or brackets sometimes present in OCR
+                clean_val = re.sub(r'[^\d.]', '', val)
+                if clean_val:
+                    val_numeric = float(clean_val)
+                    obs["valueQuantity"] = {"value": val_numeric}
+                    if o.get("unit"):
+                        obs["valueQuantity"]["unit"] = normalize_unit(o.get("unit"))
+                else:
+                    obs["valueString"] = val
+            except (ValueError, TypeError):
+                obs["valueString"] = val
         else:
             obs["valueString"] = str(val)
 
         if report_date:
             obs["effectiveDateTime"] = report_date
+        
         ref_low = o.get("ref_low")
         ref_high = o.get("ref_high")
+        
+        # Parse numeric ranges for calculation
+        low_numeric = None
+        high_numeric = None
+        
         if ref_low is not None or ref_high is not None:
             rr: Dict[str, Any] = {}
             if ref_low is not None:
-                low_parts = split_value_unit(ref_low)
-                rr["low"] = {"value": low_parts.get("value", ref_low)}
+                low_parts = split_value_unit(str(ref_low))
+                lv = low_parts.get("value", ref_low)
+                try: 
+                    low_numeric = float(re.sub(r'[^\d.]', '', str(lv)))
+                    rr["low"] = {"value": low_numeric}
+                except: rr["low"] = {"value": lv}
+                
                 if o.get("unit"):
                     rr["low"]["unit"] = normalize_unit(o.get("unit"))
                 elif low_parts.get("unit"):
                     rr["low"]["unit"] = normalize_unit(low_parts.get("unit"))
+            
             if ref_high is not None:
-                high_parts = split_value_unit(ref_high)
-                rr["high"] = {"value": high_parts.get("value", ref_high)}
+                high_parts = split_value_unit(str(ref_high))
+                hv = high_parts.get("value", ref_high)
+                try: 
+                    high_numeric = float(re.sub(r'[^\d.]', '', str(hv)))
+                    rr["high"] = {"value": high_numeric}
+                except: rr["high"] = {"value": hv}
+                
                 if o.get("unit"):
                     rr["high"]["unit"] = normalize_unit(o.get("unit"))
                 elif high_parts.get("unit"):
                     rr["high"]["unit"] = normalize_unit(high_parts.get("unit"))
             obs["referenceRange"] = [rr]
-        if o.get("flag") in {"H", "L"}:
+
+        # --- FLAG CALCULATION (Trust Numbers over Model) ---
+        calculated_flag = None
+        if val_numeric is not None:
+            if low_numeric is not None and val_numeric < low_numeric:
+                calculated_flag = "L"
+            elif high_numeric is not None and val_numeric > high_numeric:
+                calculated_flag = "H"
+        
+        # Use calculated flag if available, fallback to model flag
+        m_flag = o.get("flag")
+        final_flag = calculated_flag if calculated_flag else m_flag
+        
+        if final_flag in {"H", "L"}:
             obs["interpretation"] = [
                 {
                     "coding": [
                         {
                             "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
-                            "code": o.get("flag"),
+                            "code": final_flag,
                         }
                     ]
                 }
             ]
-        elif compute_flags:
-            val = o.get("value")
-            low = o.get("ref_low")
-            high = o.get("ref_high")
-            try:
-                if isinstance(val, (int, float)) and isinstance(low, (int, float)) and val < low:
-                    obs["interpretation"] = [
-                        {
-                            "coding": [
-                                {
-                                    "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
-                                    "code": "L",
-                                }
-                            ]
-                        }
-                    ]
-                if isinstance(val, (int, float)) and isinstance(high, (int, float)) and val > high:
-                    obs["interpretation"] = [
-                        {
-                            "coding": [
-                                {
-                                    "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
-                                    "code": "H",
-                                }
-                            ]
-                        }
-                    ]
-            except Exception:
-                pass
+        
         bundle["entry"].append({"resource": obs})
 
     return bundle

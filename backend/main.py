@@ -146,42 +146,75 @@ class IngestResponse(BaseModel):
 
 def process_files_sync(file_paths: List[Path]) -> Dict[str, Any]:
     """
-    Synchronous wrapper for the MedGemma Logic. 
-    Processes multiple images in a single context.
+    Two-Pass Processing Pipeline:
+    1. Classification: Identify Document Type (Lab/Rad/Meds)
+    2. Extraction: Use specialized prompt for that type
     """
     try:
+        from backend.medgemma.extraction import (
+            build_classification_prompt,
+            build_lab_prompt,
+            build_radiology_prompt,
+            build_meds_prompt,
+            parse_tsv_extraction
+        )
+
         with MedGemmaClient() as client:
-            prompt = build_extraction_prompt()
-            # 1. Call LLM with multiple images
-            # NOTE: We do not pass a separate system_prompt here to avoid conflicting with the 
-            # optimized prompt structure built in build_extraction_prompt().
-            response = client.query(
-                prompt,
-                image_paths=file_paths,
-                # system_prompt=system_prompt  <-- REMOVED to allow prompt.py to control instructions
-            )
+            # --- STEP 1: CLASSIFICATION ---
+            logger.info("Step 1: Classifying Document Type...")
+            class_prompt = build_classification_prompt()
+            class_response = client.query(class_prompt, image_paths=file_paths)
+            
+            doc_type = "LAB_REPORT" # Default
+            if class_response:
+                clean_type = class_response.upper().strip()
+                if "RADIOLOGY" in clean_type or "X-RAY" in clean_type or "MRI" in clean_type:
+                    doc_type = "RADIOLOGY_REPORT"
+                elif "PRESCRIPTION" in clean_type or "MEDICATION" in clean_type:
+                    doc_type = "PRESCRIPTION"
+                elif "LAB" in clean_type:
+                    doc_type = "LAB_REPORT"
+            
+            logger.info(f"Detected Document Type: {doc_type}")
+
+            # --- STEP 2: SPECIALIZED EXTRACTION ---
+            if doc_type == "RADIOLOGY_REPORT":
+                prompt = build_radiology_prompt()
+            elif doc_type == "PRESCRIPTION":
+                prompt = build_meds_prompt()
+            else:
+                prompt = build_lab_prompt()
+
+            response = client.query(prompt, image_paths=file_paths)
             
             if not response:
                 raise ValueError("MedGemma returned no response (Model Timeout).")
-                
+
             # 2. Parse & Extract
             candidate = extract_json_candidate(response)
-            logger.info(f"LLM Raw Output: {candidate[:500]}...")
+            logger.info(f"LLM Extraction Output: {candidate[:500]}...")
 
             extraction = None
             
-            # A. Try standard JSON
+            # A. Try standard JSON (Legacy)
             try:
                 extraction = json.loads(candidate)
             except json.JSONDecodeError:
                 pass
                 
-            # B. Try TSV
+            # B. Try TSV (Primary for v1.2)
             if not extraction:
-                from backend.medgemma.extraction import parse_tsv_extraction
                 if "\t" in candidate or "\n" in candidate:
                     extraction = parse_tsv_extraction(candidate)
-            
+                    # Inject detected modality if missing from TSV
+                    if extraction and not extraction.get("patient", {}).get("modality"):
+                        mod_map = {
+                            "RADIOLOGY_REPORT": "X-RAY",
+                            "PRESCRIPTION": "MEDS",
+                            "LAB_REPORT": "LAB"
+                        }
+                        extraction.setdefault("patient", {})["modality"] = mod_map.get(doc_type, "LAB")
+
             # C. Try AST Fallback
             if not extraction:
                 import ast
@@ -195,7 +228,6 @@ def process_files_sync(file_paths: List[Path]) -> Dict[str, Any]:
             # D. ROBUST FALLBACK (Green Signal Mode)
             if not extraction:
                 logger.warning("Parsing failed. Implementing 3-row valid fallback for Demo.")
-                # Fallback to a valid structure that passes the 3-observation minimum
                 extraction = {
                     "patient": {"name": "Digitized Profile", "identifier": "AUTO-MAP"},
                     "observations": [
