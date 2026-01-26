@@ -5,6 +5,35 @@ import ActivityLog from './ActivityLog';
 import RecentActivity from './RecentActivity';
 
 const DashboardPage = ({ onUploadClick, isProcessing, logs, refreshTrigger }) => {
+  const [activeCount, setActiveCount] = React.useState(0);
+
+  // Fetch Stats dynamically
+  React.useEffect(() => {
+     // Simple heuristic: Count "active streams" as submissions today from the recent list
+     // In a real app, this would be a dedicated /stats endpoint, but we can infer it for now to save backend churn
+     const checkStats = async () => {
+        try {
+           const keys = JSON.parse(localStorage.getItem('medgemma_api_keys') || '[]');
+           if (keys.length > 0) {
+              const res = await fetch(`http://localhost:8000/api/v1/submissions?limit=50`, {
+                 headers: { 'Authorization': `Bearer ${keys[0].key}` }
+              });
+              const data = await res.json();
+              // Count submissions in last 24h
+              const now = new Date();
+              const todayCount = data.filter(d => {
+                 const t = new Date(d.created_at.endsWith('Z') ? d.created_at : `${d.created_at}Z`);
+                 return (now - t) < 24 * 60 * 60 * 1000;
+              }).length;
+              setActiveCount(todayCount);
+           }
+        } catch (e) {
+           console.error(e);
+        }
+     };
+     checkStats();
+  }, [refreshTrigger, isProcessing]);
+
   return (
     <div className="flex-1 overflow-auto p-8 space-y-8 custom-scrollbar">
       {/* Hero Section */}
@@ -14,7 +43,7 @@ const DashboardPage = ({ onUploadClick, isProcessing, logs, refreshTrigger }) =>
             Good evening, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-200">Dr. Sridhar</span>
           </h1>
           <p className="text-muted-foreground text-lg">
-            The system is ready. <span className="text-white font-medium">3 active patient streams</span> require your attention.
+            The system is ready. <span className="text-white font-medium">{activeCount} active patient stream{activeCount !== 1 ? 's' : ''}</span> require your attention.
           </p>
         </div>
         

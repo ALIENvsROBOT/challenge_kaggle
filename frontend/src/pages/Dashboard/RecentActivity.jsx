@@ -12,10 +12,13 @@ import { fetchSubmissions, getStoredApiKeys } from '../../services/api';
 
 const formatTimeAgo = (dateString) => {
   const now = new Date();
-  const past = new Date(dateString);
+  // Server returns ISO string without Z usually if simple datetime.now().isoformat()
+  // Append Z to treat as UTC if not present
+  const timeString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+  const past = new Date(timeString);
   const diffInSecs = Math.floor((now - past) / 1000);
   
-  if (diffInSecs < 60) return `${diffInSecs}s ago`;
+  if (diffInSecs < 60) return `Just now`;
   const diffInMins = Math.floor(diffInSecs / 60);
   if (diffInMins < 60) return `${diffInMins}m ago`;
   const diffInHours = Math.floor(diffInMins / 60);

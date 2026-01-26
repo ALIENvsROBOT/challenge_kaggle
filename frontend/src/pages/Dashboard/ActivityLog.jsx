@@ -9,7 +9,7 @@ const ActivityLog = ({ logs, isProcessing }) => {
       <div className="px-5 py-4 bg-white/5 border-b border-black/50 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
             <Terminal size={14} className="text-muted-foreground" />
-            <span className="text-muted-foreground text-xs font-semibold tracking-wide">System Activity Log</span>
+            <span className="text-muted-foreground text-xs font-semibold tracking-wide">Local Session Log</span>
         </div>
         <div className="flex items-center gap-4">
             {logs.length > 0 && (
