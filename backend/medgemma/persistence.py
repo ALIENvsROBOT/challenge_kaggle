@@ -92,18 +92,30 @@ def get_submissions(limit: int = 20) -> list:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, patient_id, original_filename, created_at, status FROM submissions ORDER BY created_at DESC LIMIT %s",
+            "SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path FROM submissions ORDER BY created_at DESC LIMIT %s",
             (limit,)
         )
         rows = cur.fetchall()
         submissions = []
         for row in rows:
+            # Construct accessible URL from file_path
+            # Stored path: uploaded_files/filename.png -> Served at: /static/filename.png
+            file_path = row[6]
+            image_url = None
+            if file_path:
+                filename = os.path.basename(file_path)
+                # Assume backend host is handled by proxy or absolute URL construction in frontend
+                # For now returning relative path that matches the mounted static route
+                image_url = f"http://localhost:8000/static/{filename}" 
+
             submissions.append({
                 "id": str(row[0]),
                 "patient_id": row[1],
                 "filename": row[2],
                 "created_at": row[3].isoformat(),
-                "status": row[4]
+                "status": row[4],
+                "fhir_bundle": row[5],
+                "image_url": image_url
             })
         cur.close()
         conn.close()

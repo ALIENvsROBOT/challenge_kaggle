@@ -213,6 +213,10 @@ class MedGemmaClient:
         cleaned = text.strip()
         if cleaned.startswith("```json"):
             return cleaned[7:-3].strip()
+        if cleaned.startswith("```tsv"):
+            return cleaned[6:-3].strip()
+        if cleaned.startswith("```markdown"):
+            return cleaned[11:-3].strip()
         if cleaned.startswith("```"):
             return cleaned[3:-3].strip()
         return cleaned

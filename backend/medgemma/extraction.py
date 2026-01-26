@@ -49,12 +49,13 @@ def build_extraction_prompt() -> str:
             "SAMPLE_ID: <sample id>\n"
             "REPORT_DATE: <YYYY-MM-DD>\n"
             "Rules:\n"
-            "- Include EVERY row from the lab table (not just one)."
-            "- If a test name or value is unclear, omit that row."
-            "- Use numbers for values when possible; otherwise use strings."
-            "- Include REF_LOW/REF_HIGH/FLAG only if visible."
-            "- Do NOT reuse any example values."
-            "- Output must start with PATIENT_NAME/SAMPLE_ID/REPORT_DATE (optional) or the header."
+            "- Include EVERY row from the lab table (not just one).\n"
+            "- If a test name or value is unclear, omit that row.\n"
+            "- Use numbers for values when possible; otherwise use strings.\n"
+            "- Include REF_LOW/REF_HIGH/FLAG only if visible.\n"
+            "- Do NOT reuse any example values.\n"
+            "- Output must start with PATIENT_NAME/SAMPLE_ID/REPORT_DATE (optional) or the header.\n"
+            "- If the row is a header (like 'COMPLETE BLOOD COUNT'), do NOT output it."
         )
         if strict:
             rules += (
@@ -63,6 +64,7 @@ def build_extraction_prompt() -> str:
                 "- Do NOT output section headers as rows.\n"
                 "- If units appear once in a column header, apply to each row.\n"
                 "- If value contains [H]/[L], move it to FLAG and keep VALUE numeric.\n"
+                "- Separate Ref Range into REF_LOW and REF_HIGH by splitting on '-'.\n"
                 "Checklist (include if present): Hb, Total RBC, HCT/PCV, MCV, MCH, MCHC, RDW-CV, "
                 "Total WBC, Neutrophils, Lymphocytes, Eosinophils, Monocytes, Basophils, "
                 "Platelet Count, MPV, Immature Platelet Fraction, "
@@ -177,11 +179,15 @@ def parse_tsv_extraction(text: str) -> Optional[Dict[str, Any]]:
         if upper.startswith("REPORT_DATE:"):
             report_date = line.split(":", 1)[1].strip()
             continue
-        if upper.startswith("NAME") and "VALUE" in upper and "UNIT" in upper:
+        # Relaxed Header Check: Look for NAME and VALUE, or simple column headers
+        if "NAME" in upper and "VALUE" in upper:
             header_idx = idx
             break
 
     if header_idx is None:
+        # Fallback: scans for the first line that looks like a TSV header or data
+        # If we can't find a header, we assume the first line that has tabs or distinct columns might be it 
+        # or the one after it is data.
         header_idx = -1
 
     section_headers = {

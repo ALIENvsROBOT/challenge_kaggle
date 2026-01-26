@@ -58,7 +58,12 @@ try:
 except Exception:
     pass
 
+from fastapi.staticfiles import StaticFiles
+
 app = FastAPI(title=API_TITLE, version=API_VERSION)
+
+# Serve uploaded files as static assets
+app.mount("/static", StaticFiles(directory="uploaded_files"), name="static")
 
 # --- CORS Middleware ---
 # Allows frontend to communicate with backend
@@ -146,19 +151,13 @@ def process_files_sync(file_paths: List[Path]) -> Dict[str, Any]:
     try:
         with MedGemmaClient() as client:
             prompt = build_extraction_prompt()
-            # Extremely strict system prompt for batch processing
-            system_prompt = (
-                "CRITICAL: Output ONLY a single JSON object or a single TSV table. "
-                "Do NOT include conversational text, notes, or analysis. "
-                "Combine all medical data from the provided images into ONE unified structure. "
-                "Start your response immediately with '{' for JSON or the TSV header."
-            )
-            
             # 1. Call LLM with multiple images
+            # NOTE: We do not pass a separate system_prompt here to avoid conflicting with the 
+            # optimized prompt structure built in build_extraction_prompt().
             response = client.query(
                 prompt,
                 image_paths=file_paths,
-                system_prompt=system_prompt
+                # system_prompt=system_prompt  <-- REMOVED to allow prompt.py to control instructions
             )
             
             if not response:
