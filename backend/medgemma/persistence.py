@@ -166,3 +166,80 @@ def update_submission(submission_id: str, fhir_bundle: Dict[str, Any]) -> bool:
     except Exception as e:
         logger.error(f"Failed to update submission {submission_id}: {e}")
         return False
+
+def get_patients_directory() -> list:
+    """
+    Aggregates metrics per patient for the directory view.
+    Returns: List of {patient_id, file_count, last_updated}
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        query = """
+            SELECT 
+                patient_id, 
+                COUNT(*) as file_count, 
+                MAX(created_at) as last_updated 
+            FROM submissions 
+            GROUP BY patient_id 
+            ORDER BY last_updated DESC
+        """
+        cur.execute(query)
+        rows = cur.fetchall()
+        
+        directory = []
+        for row in rows:
+            directory.append({
+                "patient_id": row[0],
+                "file_count": row[1],
+                "last_updated": row[2].isoformat() if row[2] else None
+            })
+            
+        cur.close()
+        conn.close()
+        return directory
+    except Exception as e:
+        logger.error(f"Failed to fetch patient directory: {e}")
+        return []
+
+def get_patient_history(patient_id: str) -> list:
+    """Retrieves all submissions for a specific patient, sorted by date."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path 
+            FROM submissions 
+            WHERE patient_id = %s 
+            ORDER BY created_at DESC
+            """,
+            (patient_id,)
+        )
+        rows = cur.fetchall()
+        
+        history = []
+        for row in rows:
+            # Reconstruct image URL logic (DRY violation but simple for now)
+            file_path = row[6]
+            image_url = None
+            if file_path:
+                filename = os.path.basename(file_path)
+                image_url = f"http://localhost:8000/static/{filename}"
+
+            history.append({
+                "id": str(row[0]),
+                "patient_id": row[1],
+                "filename": row[2],
+                "created_at": row[3].isoformat(),
+                "status": row[4],
+                "fhir_bundle": row[5],
+                "image_url": image_url
+            })
+            
+        cur.close()
+        conn.close()
+        return history
+    except Exception as e:
+        logger.error(f"Failed to fetch history for {patient_id}: {e}")
+        return []

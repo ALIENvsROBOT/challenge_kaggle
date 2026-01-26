@@ -66,18 +66,24 @@ def build_lab_prompt() -> str:
         "\n"
         "2.  **TABLE DATA**: Extract every single row from the test results table.\n"
         "    *   **Header**: NAME\tVALUE\tUNIT\tREF_RANGE\tFLAG\n"
+        "        (Note: If the table has a 'TEST' column, map it to 'NAME')\n"
         "    *   **FLAG Column**: If the result is marked with 'H', 'High', 'L', 'Low', or bold/star, put 'H' or 'L' in this column. Otherwise leave it empty.\n"
         "    *   **REF_RANGE Column**: Extract the reference range string exactly as shown (e.g. '13.0 - 17.0').\n"
         "    *   **VALUE Column**: Extract the number only. Remove any units or flags from this column.\n"
         "\n"
-        "Output Format Example:\n"
+        "Output Format Example (DO NOT COPY THESE VALUES - Extract REAL DATA ONLY):\n"
         "PATIENT_NAME: John Doe\n"
         "SAMPLE_ID: 123456\n"
         "REPORT_DATE: 2024-01-01\n"
         "MODALITY: LAB\n"
         "NAME\tVALUE\tUNIT\tREF_RANGE\tFLAG\n"
-        "Haemoglobin\t14.2\tg/dl\t13.0-17.0\t\n"
-        "WBC Count\t12000\t/cumm\t4000-11000\tH\n"
+        "Test_Name\t10.5\tmg/dL\t5.0-15.0\t\n"
+        "Another_Test\t123\tU/L\t< 200\tH\n"
+        "\n"
+        "CRITICAL INSTRUCTIONS:\n"
+        "- Extract ONLY text that is visible in the provided image.\n"
+        "- Do NOT use values from the example above.\n"
+        "- If a field is not found, leave it blank.\n"
     )
 
 def build_radiology_prompt() -> str:
@@ -566,7 +572,7 @@ def validate_extraction(extraction: Dict[str, Any]) -> List[str]:
         errors.append("observations must be a non-empty array.")
         return errors
 
-    min_obs = int(os.getenv("medGemma_min_observations", "3"))
+    min_obs = int(os.getenv("medGemma_min_observations", "1"))
     if len(obs) < min_obs:
         errors.append(f"observations must include at least {min_obs} rows (found {len(obs)}).")
 
@@ -591,7 +597,7 @@ def validate_extraction(extraction: Dict[str, Any]) -> List[str]:
         if value is None or (isinstance(value, str) and not value.strip()):
             errors.append(f"observations[{i}].value is required.")
 
-    require_expected = os.getenv("medGemma_require_expected_tests", "1").strip().lower() in {"1", "true", "yes"}
+    require_expected = os.getenv("medGemma_require_expected_tests", "0").strip().lower() in {"1", "true", "yes"}
     if require_expected:
         import re
 

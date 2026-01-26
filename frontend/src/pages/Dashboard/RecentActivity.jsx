@@ -35,6 +35,7 @@ const RecentActivity = ({ refreshTrigger }) => {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
 
   useEffect(() => {
+    let interval;
     const loadData = async () => {
       try {
         const keys = getStoredApiKeys();
@@ -50,6 +51,8 @@ const RecentActivity = ({ refreshTrigger }) => {
     };
 
     loadData();
+    interval = setInterval(loadData, 5000); // Auto-refresh every 5s
+    return () => clearInterval(interval);
   }, [refreshTrigger]);
 
   return (
@@ -116,6 +119,13 @@ const RecentActivity = ({ refreshTrigger }) => {
           <FHIRViewer 
             data={selectedSubmission} 
             onClose={() => setSelectedSubmission(null)} 
+            onRefresh={async () => {
+               const keys = getStoredApiKeys();
+               if (keys.length > 0) {
+                   const data = await fetchSubmissions(keys[0].key, 10);
+                   setSubmissions(data);
+               }
+            }}
           />
         )}
       </AnimatePresence>

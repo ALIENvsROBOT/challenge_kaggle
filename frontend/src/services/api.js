@@ -4,6 +4,25 @@
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+const handleResponse = async (response) => {
+    if (!response.ok) {
+        let errorMsg = `Server Error (${response.status})`;
+        try {
+            const errorData = await response.json();
+            if (errorData.detail) {
+                errorMsg = typeof errorData.detail === 'string' 
+                    ? errorData.detail 
+                    : JSON.stringify(errorData.detail);
+            }
+        } catch (e) {
+            const text = await response.text();
+            if (text) errorMsg += `: ${text}`;
+        }
+        throw new Error(errorMsg);
+    }
+    return await response.json();
+};
+
 /**
  * Ingest multiple medical records (images or PDFs)
  * @param {string} patientId 
@@ -20,20 +39,20 @@ export const ingestMedicalRecord = async (patientId, files, apiKey) => {
         formData.append('files', file);
     });
 
-    const response = await fetch(`${API_URL}/api/v1/ingest`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: formData
-    });
+    try {
+        const response = await fetch(`${API_URL}/api/v1/ingest`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: formData
+        });
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Server Error (${response.status}): ${errorText}`);
+        return await handleResponse(response);
+    } catch (error) {
+        console.error("Ingest failed:", error);
+        throw error;
     }
-
-    return await response.json();
 };
 
 /**
@@ -43,14 +62,19 @@ export const ingestMedicalRecord = async (patientId, files, apiKey) => {
  * @returns {Promise<Array>}
  */
 export const fetchSubmissions = async (apiKey, limit = 15) => {
-    const response = await fetch(`${API_URL}/api/v1/submissions?limit=${limit}`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${apiKey}`
-        }
-    });
+    try {
+        const response = await fetch(`${API_URL}/api/v1/submissions?limit=${limit}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            }
+        });
 
-    return await response.json();
+        return await handleResponse(response);
+    } catch (error) {
+        console.error("Fetch submissions failed:", error);
+        throw error;
+    }
 };
 
 /**
@@ -60,24 +84,56 @@ export const fetchSubmissions = async (apiKey, limit = 15) => {
  * @returns {Promise<Object>}
  */
 export const rerunMedGemma = async (submissionId, apiKey) => {
-    const response = await fetch(`${API_URL}/api/v1/rerun/${submissionId}`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${apiKey}`
-        }
-    });
+    try {
+        const response = await fetch(`${API_URL}/api/v1/rerun/${submissionId}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            }
+        });
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Server Error (${response.status}): ${errorText}`);
+        return await handleResponse(response);
+    } catch (error) {
+        console.error("Rerun failed:", error);
+        throw error;
     }
-
-    return await response.json();
 };
 
 /**
  * Get stored API keys from localStorage (Helper)
  */
+/**
+ * Fetch patient directory
+ */
+export const fetchPatients = async (apiKey) => {
+    try {
+        const response = await fetch(`${API_URL}/api/v1/patients`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+        return await handleResponse(response);
+    } catch (error) {
+        console.error("Fetch patients failed:", error);
+        throw error;
+    }
+};
+
+/**
+ * Fetch history for a specific patient
+ */
+export const fetchPatientHistory = async (patientId, apiKey) => {
+    try {
+        const response = await fetch(`${API_URL}/api/v1/patients/${patientId}/history`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+        return await handleResponse(response);
+    } catch (error) {
+        console.error("Fetch patient history failed:", error);
+        throw error;
+    }
+};
+
 export const getStoredApiKeys = () => {
     try {
         const stored = localStorage.getItem('medgemma_api_keys');

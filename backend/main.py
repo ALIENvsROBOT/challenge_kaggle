@@ -42,7 +42,14 @@ from backend.medgemma.fhir import (
     validate_bundle_minimal
 )
 from backend.medgemma.utils import extract_json_candidate
-from backend.medgemma.persistence import init_db, save_submission, get_submission, update_submission
+from backend.medgemma.persistence import (
+    init_db, 
+    save_submission, 
+    get_submission, 
+    update_submission,
+    get_patients_directory,
+    get_patient_history
+)
 
 # --- Configuration ---
 API_TITLE = "MedGemma FHIR-Bridge API"
@@ -364,7 +371,26 @@ async def list_submissions(limit: int = 15):
     """
     from backend.medgemma.persistence import get_submissions
     data = get_submissions(limit=limit)
+    data = get_submissions(limit=limit)
     return data
+
+@app.get("/api/v1/patients", dependencies=[Depends(verify_api_key)])
+async def list_patients():
+    """
+    **Patient Directory**
+    
+    Returns a unique list of patients with file counts and last active dates.
+    """
+    return get_patients_directory()
+
+@app.get("/api/v1/patients/{patient_id}/history", dependencies=[Depends(verify_api_key)])
+async def get_patient_timeline(patient_id: str):
+    """
+    **Patient History**
+    
+    Returns all submissions for a specific patient, sorted by most recent.
+    """
+    return get_patient_history(patient_id)
 
 @app.post("/api/v1/rerun/{submission_id}", dependencies=[Depends(verify_api_key)])
 async def rerun_medgemma(submission_id: str):

@@ -4,6 +4,7 @@ import Header from './components/Header';
 import UploadModal from './components/UploadModal';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import ConfigurationPage from './pages/Settings/ConfigurationPage';
+import PatientDirectory from './pages/DataIngestion/PatientDirectory';
 import { ingestMedicalRecord, autoProvisionApiKey } from './services/api';
 
 /**
@@ -22,6 +23,14 @@ function App() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [time, setTime] = useState(new Date().toLocaleTimeString());
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState('');
+
+  const handleGlobalSearch = (term) => {
+    setGlobalSearch(term);
+    if (term && activeNav !== 'ingestion') {
+        setActiveNav('ingestion');
+    }
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
@@ -95,10 +104,14 @@ function App() {
         <div className="absolute top-[-20%] left-[20%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-accent/10 rounded-full blur-[120px] pointer-events-none"></div>
 
-        <Header time={time} />
-
+        <Header time={time} onSearch={handleGlobalSearch} />
+ 
         {activeNav === 'settings' ? (
            <ConfigurationPage />
+        ) : activeNav === 'ingestion' ? (
+           <div className="flex-1 p-8 h-full overflow-hidden">
+             <PatientDirectory refreshTrigger={refreshTrigger} initialSearchTerm={globalSearch} />
+           </div>
         ) : (
           <DashboardPage 
             onUploadClick={() => setShowUploadModal(true)} 

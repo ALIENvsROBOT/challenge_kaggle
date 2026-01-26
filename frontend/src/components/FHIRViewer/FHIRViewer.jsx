@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -61,12 +61,20 @@ const ClinicalCard = ({ title, value, unit, referenceRange, status, type }) => {
   );
 };
 
-const FHIRViewer = ({ data, onClose }) => {
+const FHIRViewer = ({ data, onClose, onRefresh }) => {
   const [viewMode, setViewMode] = useState('clinical'); // 'clinical' or 'json'
   const [activeTab, setActiveTab] = useState('labs'); // 'labs', 'imaging', 'meds', 'vitals'
   const [copied, setCopied] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
   const [localData, setLocalData] = useState(data); // Track data locally if we reload
+  const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString());
+
+  // Sync with parent data if it refreshes in background, but don't overwrite during reload
+  useEffect(() => {
+    if (!isReloading && data) {
+        setLocalData(data);
+    }
+  }, [data, isReloading]);
   
   // Extract data from FHIR Bundle safely
   const resources = localData?.fhir_bundle?.entry?.map(e => e.resource) || [];
@@ -94,7 +102,7 @@ const FHIRViewer = ({ data, onClose }) => {
   };
 
   // Smart Default Tab
-  React.useEffect(() => {
+  useEffect(() => {
     const imagingCount = observations.filter(o => {
         const cat = (o.category?.[0]?.coding?.[0]?.code || '').toLowerCase();
         return cat === 'imaging';
@@ -124,6 +132,10 @@ const FHIRViewer = ({ data, onClose }) => {
                 ...prev,
                 fhir_bundle: updated.fhir_bundle
             }));
+            setLastUpdated(new Date().toLocaleTimeString());
+            
+            // Notify parent to refresh its cache
+            if (onRefresh) onRefresh();
         }
     } catch (error) {
         console.error("Reload failed:", error);
@@ -164,6 +176,8 @@ const FHIRViewer = ({ data, onClose }) => {
               </h2>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="font-mono bg-white/5 px-1.5 rounded text-white/60">ID: {localData?.patient_id}</span>
+                <span>•</span>
+                <span className="text-white/40">Refreshed: {lastUpdated}</span>
                 <span>•</span>
                 <span className="text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 size={10} /> FHIR R4 Validated

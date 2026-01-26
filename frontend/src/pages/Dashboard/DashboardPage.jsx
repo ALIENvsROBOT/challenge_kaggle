@@ -9,8 +9,7 @@ const DashboardPage = ({ onUploadClick, isProcessing, logs, refreshTrigger }) =>
 
   // Fetch Stats dynamically
   React.useEffect(() => {
-     // Simple heuristic: Count "active streams" as submissions today from the recent list
-     // In a real app, this would be a dedicated /stats endpoint, but we can infer it for now to save backend churn
+     let interval;
      const checkStats = async () => {
         try {
            const keys = JSON.parse(localStorage.getItem('medgemma_api_keys') || '[]');
@@ -19,7 +18,6 @@ const DashboardPage = ({ onUploadClick, isProcessing, logs, refreshTrigger }) =>
                  headers: { 'Authorization': `Bearer ${keys[0].key}` }
               });
               const data = await res.json();
-              // Count submissions in last 24h
               const now = new Date();
               const todayCount = data.filter(d => {
                  const t = new Date(d.created_at.endsWith('Z') ? d.created_at : `${d.created_at}Z`);
@@ -32,6 +30,8 @@ const DashboardPage = ({ onUploadClick, isProcessing, logs, refreshTrigger }) =>
         }
      };
      checkStats();
+     interval = setInterval(checkStats, 5000); // Auto-refresh every 5s
+     return () => clearInterval(interval);
   }, [refreshTrigger, isProcessing]);
 
   return (
