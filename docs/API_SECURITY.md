@@ -98,6 +98,23 @@ curl -X POST http://localhost:8000/api/v1/rerun/<SUBMISSION_ID> \
      -H "Authorization: Bearer <YOUR_KEY>"
 ```
 
+### 5. Collaborative Work: Save Doctor's Notes
+
+```bash
+curl -X POST http://localhost:8000/api/v1/submissions/<SUBMISSION_ID>/notes \
+     -H "Authorization: Bearer <YOUR_KEY>" \
+     -H "Content-Type: application/json" \
+     -d '{"notes": "Patient presents with persistent cough. X-ray suggested."}'
+```
+
+### 6. AI Clinical Synthesis
+
+```bash
+# Triggers the AI to summarize the scan + doctor's notes
+curl -X POST http://localhost:8000/api/v1/submissions/<SUBMISSION_ID>/ai_summary \
+     -H "Authorization: Bearer <YOUR_KEY>"
+```
+
 ---
 
 **Security Note**: In a real-world deployment, the `/register` endpoint should be protected by an initial "Setup Token" or disabled after the first client performs the handshake. For this challenge, it remains open to facilitate the demo workflow without manual DB seeding.

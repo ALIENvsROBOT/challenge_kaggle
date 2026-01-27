@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -19,7 +19,8 @@ import {
   Check,
   RefreshCw,
   FileText,
-  Save
+  Save,
+  Sparkles
 } from 'lucide-react';
 
 const ClinicalCard = ({ title, value, unit, referenceRange, status, type }) => {
@@ -75,10 +76,28 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
   const [notes, setNotes] = useState(data?.doctor_notes || '');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Sync notes when localData updates (e.g. from reload)
+  // AI Summary State
+  const [aiSummary, setAiSummary] = useState(data?.ai_summary || '');
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+
+  // Track previous ID to prevent overwriting notes during background refresh
+  const lastSubmissionIdRef = useRef(data?.id);
+
+  // Sync state when localData updates
   useEffect(() => {
-    if (localData?.doctor_notes !== undefined) {
-        setNotes(localData.doctor_notes);
+    // 1. If Patient ID changed, hard reset everything (new record loaded)
+    if (localData?.id !== lastSubmissionIdRef.current) {
+        lastSubmissionIdRef.current = localData?.id;
+        setNotes(localData?.doctor_notes || '');
+        setAiSummary(localData?.ai_summary || '');
+        return;
+    }
+
+    // 2. Same Patient: Only update AI Summary (server-side generation)
+    // We intentionally DO NOT update 'notes' here to prevent overwriting 
+    // user text while they are typing if a background poll happens.
+    if (localData?.ai_summary !== undefined && localData.ai_summary !== aiSummary) {
+        setAiSummary(localData.ai_summary);
     }
   }, [localData]);
 
@@ -188,6 +207,29 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
     }
   };
 
+  const handleGenerateSummary = async () => {
+     if (isGeneratingSummary) return;
+     setIsGeneratingSummary(true);
+     try {
+         const { generateAISummary, getStoredApiKeys } = await import('../../services/api');
+         const keys = getStoredApiKeys();
+         if (keys.length > 0) {
+             const result = await generateAISummary(localData.id, keys[0].key);
+             if (result && result.summary) {
+                 // Update local state and data
+                 const newSummary = result.summary;
+                 setAiSummary(newSummary);
+                 setLocalData(prev => ({ ...prev, ai_summary: newSummary }));
+             }
+         }
+     } catch (error) {
+         console.error("Failed to generate summary:", error);
+         alert("Failed to generate AI summary. Please try again.");
+     } finally {
+         setIsGeneratingSummary(false);
+     }
+  };
+
   const getUnit = (obs) => {
     if (obs.valueQuantity) return obs.valueQuantity.unit;
     return '';
@@ -264,6 +306,16 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                   }`}
                 >
                   <FileText size={14} /> Doctor's Note
+                </button>
+                <button
+                  onClick={() => setViewMode('ai_summary')}
+                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
+                    viewMode === 'ai_summary' 
+                    ? 'bg-primary text-white shadow-lg' 
+                    : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Sparkles size={14} /> AI Summary
                 </button>
             </div>
           </div>
@@ -546,6 +598,85 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                          <ShieldCheck size={14} className="text-blue-400" />
                          <span>Notes are persisted securely in the PostgreSQL database and linked to Submission ID: <span className="font-mono text-white/50">{localData?.id?.slice(0,8)}</span></span>
                       </div>
+                   </div>
+                </div>
+             )}
+
+             {viewMode === 'ai_summary' && (
+                <div className="flex-1 flex flex-col p-6 bg-[#0A0A0B] relative overflow-hidden">
+                   <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col gap-6">
+                      
+                      <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                         <div>
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                               <Sparkles className="text-amber-400" size={20} />
+                               AI Clinical Synthesis
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1">
+                               Generated summary integrating image analysis and doctor's notes.
+                            </p>
+                         </div>
+                         {aiSummary && (
+                             <button 
+                                 onClick={handleGenerateSummary}
+                                 disabled={isGeneratingSummary}
+                                 className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${
+                                     isGeneratingSummary 
+                                     ? 'bg-white/5 cursor-wait text-muted-foreground' 
+                                     : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
+                                 }`}
+                             >
+                                 <RefreshCw className={isGeneratingSummary ? "animate-spin" : ""} size={16} />
+                                 Rerun Summary
+                             </button>
+                         )}
+                      </div>
+
+                      <div className="flex-1 relative bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col">
+                          {isGeneratingSummary ? (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/50 backdrop-blur-sm z-10">
+                                  <div className="relative">
+                                     <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                                     <Sparkles size={16} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white animate-pulse" />
+                                  </div>
+                                  <p className="text-sm font-medium text-white/80 animate-pulse">Synthesizing clinical data...</p>
+                              </div>
+                          ) : null}
+
+                          {!aiSummary && !isGeneratingSummary ? (
+                              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-4">
+                                  <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 mb-2">
+                                      <Sparkles size={32} />
+                                  </div>
+                                  <h4 className="text-white font-medium text-lg">No Summary Generated</h4>
+                                  <p className="text-muted-foreground max-w-sm text-sm">
+                                      Use MedGemma's advanced vision capabilities to summarize this record and cross-reference with your notes.
+                                  </p>
+                                  <button 
+                                      onClick={handleGenerateSummary}
+                                      className="mt-4 px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl shadow-lg shadow-primary/25 font-medium text-sm transition-all flex items-center gap-2 transform hover:scale-105"
+                                  >
+                                      <Sparkles size={16} /> Generate Summary
+                                  </button>
+                              </div>
+                          ) : (
+                              <div className="p-8 overflow-y-auto custom-scrollbar">
+                                  <article className="prose prose-invert prose-sm max-w-none">
+                                      <p className="whitespace-pre-wrap leading-relaxed text-white/90 text-sm md:text-base font-sans">
+                                          {aiSummary}
+                                      </p>
+                                  </article>
+                              </div>
+                          )}
+                      </div>
+                      
+                      {aiSummary && (
+                           <div className="flex items-center gap-2 text-[10px] text-muted-foreground justify-center">
+                              <span>Generated by MedGemma 1.5-8b</span>
+                              <span>•</span>
+                              <span>Always verify with source documents</span>
+                           </div>
+                      )}
                    </div>
                 </div>
              )}

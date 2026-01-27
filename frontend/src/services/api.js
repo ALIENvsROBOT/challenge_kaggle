@@ -244,3 +244,23 @@ export const saveDoctorNotes = async (submissionId, notes, apiKey) => {
         throw error;
     }
 };
+
+/**
+ * Generate AI Summary for a submission
+ * @param {string} submissionId 
+ * @param {string} apiKey 
+ */
+export const generateAISummary = async (submissionId, apiKey) => {
+    try {
+        const response = await fetch(`${API_URL}/api/v1/submissions/${submissionId}/ai_summary`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            }
+        });
+        return await handleResponse(response);
+    } catch (error) {
+        console.error("AI Summary generation failed:", error);
+        throw error;
+    }
+};

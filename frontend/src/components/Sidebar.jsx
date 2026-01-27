@@ -11,7 +11,6 @@ import {
 const NAVIGATION = [
   { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
   { id: 'ingestion', label: 'Data Ingestion', icon: Database },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'settings', label: 'Configuration', icon: Settings },
 ];
 

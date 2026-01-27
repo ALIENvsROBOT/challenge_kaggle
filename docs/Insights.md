@@ -141,6 +141,29 @@ We discovered that 40% of extraction failures were caused by the model strugglin
 
 ---
 
+## 7. Collaborative Intelligence (v1.6): Human-AI Hybrid
+
+Pure automation is not enough. We introduced a **"Collaborative Loop"** where the AI and the Doctor work together on the same record.
+
+### A. The "Doctor's Note" Context
+
+Instead of just viewing extraction results, clinicians can now **annotate** the record directly in the FHIR Bridge.
+
+- These notes are persisted to the immutable record.
+- They serve as "Ground Truth" context for the AI.
+
+### B. AI Clinical Synthesis
+
+We don't just ask the AI to "read the image". We ask it to **"Synthesize"**:
+
+1.  **Read the Image** (Objective Evidence).
+2.  **Read the Doctor's Notes** (Subjective Context).
+3.  **Produce a Summary**: The AI generates a cohesive paragraph integrating both sources, spotting correlations that a human might miss in a rush (e.g., "Note mentions 'fatigue' and Lab shows 'Low Hemoglobin' -> suggests Anemia").
+
+This moves the system from a "Data Entry Tool" to a **"Diagnostic Partner"**.
+
+---
+
 ## Summary
 
 We are not selling a "Chatbot". We are selling a **Self-Correcting Data Bridge** that turns dangerous, unstructured images into safe, standardized medical records—verified by humans, validated by code, and visualized for high-stakes clinical decisions.

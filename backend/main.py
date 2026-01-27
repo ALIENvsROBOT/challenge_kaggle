@@ -33,7 +33,8 @@ from pydantic import BaseModel
 # Internal Modules
 from backend.medgemma.client import MedGemmaClient
 from backend.medgemma.extraction import (
-    sanitize_extraction
+    sanitize_extraction,
+    build_summary_prompt
 )
 from backend.medgemma.fhir import (
     bundle_from_extraction, 
@@ -53,7 +54,8 @@ from backend.medgemma.persistence import (
     get_patient_history,
     create_api_key,
     validate_api_key,
-    update_doctor_notes
+    update_doctor_notes,
+    update_ai_summary
 )
 
 # --- Configuration ---
@@ -485,7 +487,52 @@ async def save_doctor_notes(submission_id: str, request: DoctorNotesRequest):
     if not success:
         raise HTTPException(500, "Failed to save notes to database.")
     
+    
     return {"status": "success", "submission_id": submission_id}
+
+@app.post("/api/v1/submissions/{submission_id}/ai_summary", dependencies=[Depends(verify_api_key)])
+async def generate_ai_summary_endpoint(submission_id: str):
+    """
+    **Generate Clinical Summary**
+    
+    Trigger the LLM (MedGemma) to analyze the image + existing doctor notes 
+    and produce a summary.
+    """
+    from backend.medgemma.client import MedGemmaClient
+
+    # 1. Fetch Context (Image file + Doctor Notes)
+    sub = get_submission(submission_id)
+    if not sub:
+        raise HTTPException(404, "Submission not found")
+        
+    file_path = sub.get("file_path")
+    if not file_path or not Path(file_path).exists():
+        raise HTTPException(404, "Image file not found")
+        
+    notes = sub.get("doctor_notes", "") or ""
+
+    # 2. Run AI
+    try:
+        with MedGemmaClient() as client:
+            prompt = build_summary_prompt(notes)
+            summary = client.query(prompt, image_paths=[Path(file_path)])
+            if not summary:
+                 raise ValueError("Model returned empty response.")
+            
+            # 3. Cleanup: Model tries to be chatty sometimes, strip minor artifacts if needed
+            # For now raw output is usually fine given the prompt instructions.
+
+            # 4. Save
+            update_ai_summary(submission_id, summary)
+            
+            return {
+                "submission_id": submission_id,
+                "summary": summary
+            }
+    except Exception as e:
+        logger.error(f"Summary Generation Failed: {e}")
+        raise HTTPException(500, f"AI Processing Failed: {str(e)}")
+
 
 
 if __name__ == "__main__":

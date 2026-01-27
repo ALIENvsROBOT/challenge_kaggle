@@ -39,7 +39,7 @@ def init_db():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Submissions Table
+        # 1. Create Tables (Idempotent)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS submissions (
                 id UUID PRIMARY KEY,
@@ -51,16 +51,7 @@ def init_db():
                 status VARCHAR(50)
             );
         """)
-        
-        # Add doctor_notes column if not exists
-        try:
-            cur.execute("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS doctor_notes TEXT;")
-        except Exception:
-            conn.rollback()
-        else:
-            conn.commit()
 
-        # API Keys Table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS api_keys (
                 key VARCHAR(100) PRIMARY KEY,
@@ -72,7 +63,25 @@ def init_db():
             );
         """)
         
-        conn.commit()
+        conn.commit() # Commit base schema first
+
+        # 2. Migrations (Columns added later)
+        # Doctor's Notes
+        try:
+            cur.execute("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS doctor_notes TEXT;")
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"Migration (doctor_notes) skipped or failed: {e}")
+
+        # AI Summary
+        try:
+            cur.execute("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS ai_summary TEXT;")
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"Migration (ai_summary) skipped or failed: {e}")
+            
         cur.close()
         conn.close()
         logger.info("Database initialized (submissions + api_keys).")
@@ -161,9 +170,9 @@ def get_submissions(limit: int = 20) -> list:
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # Include doctor_notes in selection
+        # Include doctor_notes, ai_summary in selection
         cur.execute(
-            "SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path, doctor_notes FROM submissions ORDER BY created_at DESC LIMIT %s",
+            "SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path, doctor_notes, ai_summary FROM submissions ORDER BY created_at DESC LIMIT %s",
             (limit,)
         )
         rows = cur.fetchall()
@@ -187,7 +196,8 @@ def get_submissions(limit: int = 20) -> list:
                 "status": row[4],
                 "fhir_bundle": row[5],
                 "image_url": image_url,
-                "doctor_notes": row[7]
+                "doctor_notes": row[7],
+                "ai_summary": row[8]
             })
         cur.close()
         conn.close()
@@ -202,7 +212,7 @@ def get_submission(submission_id: str) -> Dict[str, Any]:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, patient_id, original_filename, file_path, fhir_bundle, status, doctor_notes FROM submissions WHERE id = %s",
+            "SELECT id, patient_id, original_filename, file_path, fhir_bundle, status, doctor_notes, ai_summary FROM submissions WHERE id = %s",
             (submission_id,)
         )
         row = cur.fetchone()
@@ -216,7 +226,8 @@ def get_submission(submission_id: str) -> Dict[str, Any]:
                 "file_path": row[3],
                 "fhir_bundle": row[4],
                 "status": row[5],
-                "doctor_notes": row[6]
+                "doctor_notes": row[6],
+                "ai_summary": row[7]
             }
         return None
     except Exception as e:
@@ -255,6 +266,23 @@ def update_doctor_notes(submission_id: str, notes: str) -> bool:
         return True
     except Exception as e:
         logger.error(f"Failed to update doctor notes for {submission_id}: {e}")
+        return False
+
+def update_ai_summary(submission_id: str, summary: str) -> bool:
+    """Updates the AI summary for a submission."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE submissions SET ai_summary = %s WHERE id = %s",
+            (summary, submission_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update AI summary for {submission_id}: {e}")
         return False
 
 def get_patients_directory() -> list:
@@ -297,10 +325,10 @@ def get_patient_history(patient_id: str) -> list:
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # Include doctor_notes in selection
+        # Include doctor_notes, ai_summary in selection
         cur.execute(
             """
-            SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path, doctor_notes 
+            SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path, doctor_notes, ai_summary 
             FROM submissions 
             WHERE patient_id = %s 
             ORDER BY created_at DESC
@@ -326,7 +354,8 @@ def get_patient_history(patient_id: str) -> list:
                 "status": row[4],
                 "fhir_bundle": row[5],
                 "image_url": image_url,
-                "doctor_notes": row[7]
+                "doctor_notes": row[7],
+                "ai_summary": row[8]
             })
             
         cur.close()

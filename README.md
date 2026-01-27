@@ -14,7 +14,7 @@
 
 The **MedGemma FHIR-Bridge** is an enterprise-grade interoperability engine designed to resolve the healthcare industry's "Dark Data" crisis. It functions as a semantic bridge between unstructured analog records (handwritten scripts, prescription images, lab results) and the **HL7 FHIR (Fast Healthcare Interoperability Resources)** digital standard.
 
-By orchestrating **MedGemma 1.5 (4B)** within a recursive validation loop, the system achieves **context-aware semantic structuring with guaranteed schema compliance.** The "Self-Healing" architecture identifies model hallucinations or formatting errors in real-time and applies deterministic clinical logic to ensure data persistence is always valid and standardized.
+By orchestrating **MedGemma 1.5 (4B)** within a recursive validation loop, the system achieves **context-aware semantic structuring with guaranteed schema compliance.** The "Self-Healing" architecture identifies model hallucinations or formatting errors in real-time, while **Collaborative Synthesis** allows human expertise (Doctor's Notes) to guide and refine AI-generated clinical summaries (AI Insights).
 
 ---
 
@@ -29,7 +29,10 @@ By orchestrating **MedGemma 1.5 (4B)** within a recursive validation loop, the s
 - **🔐 Secure API Gateway (v1.3)**:
   - **Dynamic Provisioning**: Frontend clients auto-negotiate secure keys via `/api/v1/auth/register`.
   - **Database Persistence**: Keys are stored in PostgreSQL with granular role scopes and revocation capabilities.
-- **🔄 Retroactive Smart Rerun**:
+- **� Collaborative Intelligence**:
+  - **Doctor's Notes**: Reviewers can attach clinical contextual notes directly to the immutable FHIR record.
+  - **AI Clinical Synthesis**: A specialized prompt engine (MedGemma) integrates the raw image evidence _and_ the doctor's notes to generate a concise, synthesized clinical summary with recommendations.
+- **�🔄 Retroactive Smart Rerun**:
   - **Temporal Correction**: Re-analyze old records with updated logic.
   - **Priority Queueing**: Updated records automatically float to the top of the clinician's timeline for immediate review.
 - **🛡️ Self-Healing Fallbacks**: If model output is malformed, the "Auditor" triggers a high-integrity fallback, preserving patient safety and ensuring a 100% processing success rate.

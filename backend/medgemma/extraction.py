@@ -141,6 +141,24 @@ def build_meds_prompt() -> str:
         "- Output TSV only.\n"
     )
 
+def build_summary_prompt(notes: str = "") -> str:
+    """Step 3: Generate Intelligent Summary"""
+    context_block = f"DOCTOR'S NOTES: {notes}\n" if notes else ""
+    return (
+        "You are an expert Medical Consultant. Your task is to provide a concise, collaborative clinical summary based on the provided medical image and any doctor's notes.\n"
+        "\n"
+        f"{context_block}"
+        "\n"
+        "INSTRUCTIONS:\n"
+        "1. **Analyze the Image**: Identify the type of report/scan and summarize the key abnormal findings or critical values.\n"
+        "2. **Integrate Notes**: If doctor's notes are provided, incorporate them into your analysis. Do they align with the image findings? Do they suggest a specific diagnosis?\n"
+        "3. **Synthesis**: Provide a unified summary paragraph (approx. 3-5 sentences) that highlights the most critical information for immediate clinical decision making.\n"
+        "4. **Recommendations**: Suggest 1-2 follow-up actions or tests if applicable based on the findings.\n"
+        "\n"
+        "OUTPUT FORMAT:\n"
+        "Return ONLY the summary text. Do not use Markdown formatting like bolding or headers inside the text, just plain text suitable for a quick read."
+    )
+
 def build_extraction_prompt() -> str:
     # Deprecated single-shot prompt, forwarded to Lab for backward compatibility if needed
     return build_lab_prompt()
