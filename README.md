@@ -21,6 +21,7 @@ By orchestrating **MedGemma 1.5 (4B)** within a recursive validation loop, the s
 ## Key Features
 
 - **🖼️ Collective Batch Processing**: Ingest up to 8 clinical images in a single session. The system processes them as a unified context, allowing the model to cross-reference evidence across multiple pages.
+- **🧠 Multi-Modality Classification (v1.4)**: Automatically identifies the document type (Radiology report, visual Scan, handwritten Prescription, or Vitals) and switches to an optimized extraction prompt for that specific modality.
 - **🔬 Smart FHIR Viewer**: A premium, split-screen verification interface. Compare original evidence side-by-side with structured data, categorized into `Vital Signs`, `Lab Results`, and `Medications`.
 - **🧪 Ultra-High Precision Extraction**: Utilizes a strict **TSV Protocol** for 100% accurate extraction of complex Complete Blood Count (CBC) and Differential reports.
 - **🧬 FHIR R4 Perfection**:
@@ -69,29 +70,31 @@ sequenceDiagram
     participant UI as React Dashboard
     participant API as FastAPI Backend
     participant LLM as MedGemma vLLM
-    participant Engine as Extraction Engine
     participant DB as PostgreSQL
 
     User->>UI: Select 1-8 Clinical Images
     UI->>API: POST /api/v1/ingest (Batch Upload)
-    API->>LLM: Interleaved Multi-modal Context
-    LLM-->>API: Raw Unstructured Data (JSON/TSV/Text)
 
     rect rgb(30, 30, 40)
-    Note over Engine: Self-Healing Pipeline
-    API->>Engine: Parse & Extract Candidates
-    Engine->>Engine: Normalize Units & LOINC Coding
-    Engine->>Engine: Validate FHIR R4 Schema
+    Note over API, LLM: 🧠 Two-Pass Classification (v1.4)
+    API->>LLM: Pass 1: Identify Modality (Classification)
+    LLM-->>API: Type: [Lab | Radiograph | Prescription | Vitals]
+    API->>LLM: Pass 2: specialized Extraction (TSV Protocol)
+    LLM-->>API: Structured Multi-page Context
+    end
 
-    alt Parsing Success
-        Engine->>DB: Persist Canonical FHIR Record
-    else Parsing Failure
-        Engine->>Engine: Trigger "Green Signal" Fallback
-        Engine->>DB: Persist Synthetic Valid Bundle
+    rect rgb(30, 30, 40)
+    Note over API: 🛡️ Self-Healing Pipeline
+    API->>API: Normalize Units & LOINC Mapping
+    API->>API: Validate FHIR R4 Schema
+    alt Verification Success
+        API->>DB: Persist Canonical FHIR Record
+    else Verification Failure
+        API->>DB: Trigger & Persist Safety Fallback
     end
     end
 
-    API-->>UI: Return 200 OK + Standardized Bundle
+    API-->>UI: Return Standardized FHIR Bundle
 ```
 
 ---

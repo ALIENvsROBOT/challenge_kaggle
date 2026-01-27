@@ -20,7 +20,8 @@ import {
   RefreshCw,
   FileText,
   Save,
-  Sparkles
+  Sparkles,
+  Download
 } from 'lucide-react';
 
 const ClinicalCard = ({ title, value, unit, referenceRange, status, type }) => {
@@ -142,23 +143,51 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
     return 'N/A';
   };
 
+  // Track if we've auto-selected a tab for this specific patient/submission
+  const tabInitializedForId = useRef(null);
+
   // Smart Default Tab
   useEffect(() => {
+    // If we've already set a smart default for this specific record ID, 
+    // don't override the user's current navigation (e.g. during a refresh).
+    if (localData?.id === tabInitializedForId.current) return;
+
     const imagingCount = observations.filter(o => {
         const cat = (o.category?.[0]?.coding?.[0]?.code || '').toLowerCase();
         return cat === 'imaging';
     }).length;
     
+    let targetTab = 'vitals';
     if (imagingCount > 0) {
-        setActiveTab('imaging');
+        targetTab = 'imaging';
     } else if (observations.length > 0) {
-        setActiveTab('labs');
+        targetTab = 'labs';
     } else if (medications.length > 0) {
-        setActiveTab('meds');
-    } else {
-        setActiveTab('vitals');
+        targetTab = 'meds';
     }
-  }, [observations, medications.length]);
+
+    // Only commit if we actually have data (or if it's empty, default to vitals is fine)
+    setActiveTab(targetTab);
+    
+    // Mark this ID as initialized so subsequent refreshes don't reset the tab
+    if (localData?.id) {
+        tabInitializedForId.current = localData.id;
+    }
+  }, [observations, medications.length, localData?.id]);
+
+  const handleDownloadImage = () => {
+    if (!localData?.image_url) return;
+    
+    // Use direct link approach which is more robust for cross-origin image downloads
+    // in complex environments, while still attempting to trigger a download.
+    const link = document.createElement('a');
+    link.href = localData.image_url;
+    link.download = localData.filename || `clinical_record_${localData.id?.slice(0, 8)}.jpg`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleReload = async () => {
     if (isReloading) return;
@@ -358,13 +387,24 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                  </h3>
                  <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/60">BATCH ID: {localData?.id?.slice(0,8)}</span>
               </div>
-              <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-[url('/grid-pattern.svg')] bg-[length:20px_20px]">
+              <div className="flex-1 overflow-auto p-4 flex flex-col items-center justify-center bg-[url('/grid-pattern.svg')] bg-[length:20px_20px] relative group">
                  {localData?.image_url ? (
-                    <img 
-                      src={localData.image_url} 
-                      alt="Clinical Record" 
-                      className="max-w-full rounded-lg border border-white/10 shadow-2xl"
-                    />
+                    <>
+                      <img 
+                        src={localData.image_url} 
+                        alt="Clinical Record" 
+                        className="max-w-full rounded-lg border border-white/10 shadow-2xl"
+                      />
+                      <div className="absolute top-6 right-6">
+                        <button 
+                          onClick={handleDownloadImage}
+                          className="flex items-center gap-2 px-3 py-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl text-white text-xs font-medium hover:bg-black/80 transition-all shadow-xl"
+                        >
+                          <Download size={14} />
+                          Download Image
+                        </button>
+                      </div>
+                    </>
                  ) : (
                     <div className="text-center p-8 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 max-w-sm w-full">
                        <div className="bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
@@ -484,9 +524,6 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                                   </p>
                                 </div>
                               </div>
-                              <button className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-white transition-colors">
-                                View Details
-                              </button>
                            </div>
                         ))}
 
