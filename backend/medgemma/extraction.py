@@ -39,20 +39,29 @@ def format_history_summary(history: List[Dict[str, Any]]) -> str:
 def build_classification_prompt() -> str:
     """Step 1: Identify the Document Type"""
     return (
-        "Analyze the medical image(s). Classify the document type.\n"
+        "Analyze the visual content and text of the image(s) to classify the document type.\n"
         "Return ONLY one of these strings:\n"
         "LAB_REPORT\n"
-        "RADIOLOGY_REPORT   (X-Ray, CT, MRI, Ultrasound)\n"
-        "PRESCRIPTION       (Medication list)\n"
-        "VITALS             (Blood Pressure, Heart Rate, BMI check)\n"
+        "RADIOLOGY_REPORT\n"
+        "PRESCRIPTION\n"
+        "VITALS\n"
         "OTHER\n"
         "\n"
-        "Rules:\n"
-        "- If it contains tabular blood test results, choose LAB_REPORT.\n"
-        "- If it contains an image of a scan or text about 'Lungs', 'Heart', 'Bones' findings, choose RADIOLOGY_REPORT.\n"
-        "- If it lists drugs/dosage, choose PRESCRIPTION.\n"
-        "- If it contains a list of vital signs (BP, Pulse, Temp), choose VITALS.\n"
-        "- Output NOTHING else. No markdown."
+        "### DEFINITIONS ###\n"
+        "1. **LAB_REPORT**: Expected to be a **Table** or **Grid**. MUST contain columns for 'Test Name', 'Result', and 'Reference Range'. Tyipcally blood tests (CBC, Glucose, Liver).\n"
+        "2. **RADIOLOGY_REPORT**: \n"
+        "    - A visual X-Ray, MRI, CT scan, or Ultrasound image.\n"
+        "    - OR a text report with sections: 'Technique', 'Findings', 'Impression', 'Conclusion'.\n"
+        "3. **PRESCRIPTION**: Handwritten or printed list of drugs. Look for symbols like 'Rx', dosages ('mg', 'ml'), and frequencies ('BD', 'hs').\n"
+        "4. **VITALS**: A list (often handwritten or monitor screen) of BP, Pulse, SPO2, Temp, Height, Weight.\n"
+        "\n"
+        "### TIE-BREAKER RULES ###\n"
+        "- **VISUAL SCAN** (Bones/Organs visible) -> **RADIOLOGY_REPORT** (Priority 1).\n"
+        "- **HANDWRITTEN NOTE** with drugs -> **PRESCRIPTION**.\n"
+        "- **TABLE OF NUMBERS** with 'Range' -> **LAB_REPORT**.\n"
+        "- **TEXT ONLY** describing 'heart size', 'lungs clear' -> **RADIOLOGY_REPORT**.\n"
+        "\n"
+        "Final Answer (One Word):"
     )
 
 def build_lab_prompt() -> str:
@@ -134,12 +143,13 @@ def build_meds_prompt() -> str:
         "\n"
         "Guidelines:\n"
         "- **DRUG**: Name of the medicine (e.g., 'Amoxicillin').\n"
-        "- **DOSAGE**: Strength (e.g., '500mg').\n"
+        "- **DOSAGE**: Strength with unit (e.g., '500mg', '10 mL'). Do not split number and unit.\n"
         "- **FREQUENCY**: How often (e.g., 'Twice Daily', 'BD', 'TID').\n"
         "- If dosage/freq are combined, split them if possible, or put remaining info in FREQUENCY.\n"
         "\n"
         "CRITICAL:\n"
         "- Extract ONLY real text. Do NOT invent drugs.\n"
+        "- Ensure DOSAGE includes the unit (mg, ml, etc).\n"
         "- Output TSV only.\n"
     )
 
@@ -506,6 +516,17 @@ def sanitize_extraction(extraction: Dict[str, Any]) -> Dict[str, Any]:
             ref_high = o.get("hi")
         flag = o.get("flag") or o.get("fl")
 
+        # SPECIALIZED SANITIZATION BY MODALITY
+        mod = (patient.get("modality") or "").upper()
+        if mod in ["MEDS", "PRESCRIPTION"]:
+            # For Meds, Value is Dosage (String) and Unit is Frequency (String)
+            # Do NOT use numeric splitting which would strip units (500mg -> 500)
+            cleaned = {"name": n, "value": value}
+            if unit: # Frequency
+                cleaned["unit"] = unit
+            cleaned_obs.append(cleaned)
+            continue
+            
         value_parts = split_value_unit(value)
         cleaned = {"name": n, "value": value_parts.get("value")}
         if value_parts.get("flag"):
