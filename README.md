@@ -30,10 +30,10 @@ By orchestrating **MedGemma 1.5 (4B)** within a recursive validation loop, the s
 - **🔐 Secure API Gateway (v1.3)**:
   - **Dynamic Provisioning**: Frontend clients auto-negotiate secure keys via `/api/v1/auth/register`.
   - **Database Persistence**: Keys are stored in PostgreSQL with granular role scopes and revocation capabilities.
-- **� Collaborative Intelligence**:
+- **🤝 Collaborative Intelligence**:
   - **Doctor's Notes**: Reviewers can attach clinical contextual notes directly to the immutable FHIR record.
   - **AI Clinical Synthesis**: A specialized prompt engine (MedGemma) integrates the raw image evidence _and_ the doctor's notes to generate a concise, synthesized clinical summary with recommendations.
-- **�🔄 Retroactive Smart Rerun**:
+- **🕒🔄 Retroactive Smart Rerun**:
   - **Temporal Correction**: Re-analyze old records with updated logic.
   - **Priority Queueing**: Updated records automatically float to the top of the clinician's timeline for immediate review.
 - **🛡️ Self-Healing Fallbacks**: If model output is malformed, the "Auditor" triggers a high-integrity fallback, preserving patient safety and ensuring a 100% processing success rate.
@@ -72,29 +72,48 @@ sequenceDiagram
     participant LLM as MedGemma vLLM
     participant DB as PostgreSQL
 
-    User->>UI: Select 1-8 Clinical Images
-    UI->>API: POST /api/v1/ingest (Batch Upload)
+    User->>UI: Upload Record (Image/PDF)
+    UI->>API: POST /api/v1/ingest
 
-    rect rgb(30, 30, 40)
-    Note over API, LLM: 🧠 Two-Pass Classification (v1.4)
-    API->>LLM: Pass 1: Identify Modality (Classification)
-    LLM-->>API: Type: [Lab | Radiograph | Prescription | Vitals]
-    API->>LLM: Pass 2: specialized Extraction (TSV Protocol)
-    LLM-->>API: Structured Multi-page Context
+    rect rgb(35, 35, 45)
+    Note over API, LLM: 🧠 Phase 1: Classification (Two-Pass)
+    API->>LLM: Identify Modality (Lab/Rad/Meds/Vitals)
+    LLM-->>API: Detected Category (e.g., PRESCRIPTION)
+    end
+
+    rect rgb(30, 40, 50)
+    Note over API, LLM: 🧪 Phase 2: High-Precision Extraction
+    API->>LLM: Specialized Inference (TSV Protocol)
+    LLM-->>API: Raw Data (High-Entropy OCR)
     end
 
     rect rgb(30, 30, 40)
-    Note over API: 🛡️ Self-Healing Pipeline
-    API->>API: Normalize Units & LOINC Mapping
-    API->>API: Validate FHIR R4 Schema
-    alt Verification Success
-        API->>DB: Persist Canonical FHIR Record
-    else Verification Failure
-        API->>DB: Trigger & Persist Safety Fallback
+    Note over API: 🛡️ Phase 3: The "Self-Healing" Auditor
+    API->>API: Hybrid Parser (JSON + TSV recovery)
+    API->>API: Semantic Firewall (e.g., Platelet Scaling Fix)
+    API->>API: Terminology Normalize (LOINC/SNOMED)
+    API->>API: Schema Invalidation Check (FHIR R4)
+
+    alt Verification Guardrails Passed
+        API->>DB: Persist Verified Patient Record
+    else Hallucination Detected
+        API->>API: Trigger Structural Fallback (Safety Mode)
+        API->>DB: Persist Partial Valid Bundle
     end
     end
 
-    API-->>UI: Return Standardized FHIR Bundle
+    API-->>UI: Render Clinical Standard View
+
+    rect rgb(45, 35, 35)
+    Note over User, LLM: 🤝 Phase 4: Collaborative Synthesis (v1.4.1)
+    User->>UI: Add Clinical Context (Doctor's Notes)
+    UI->>API: Update Notes & Trigger Synthesis
+    API->>LLM: Rerun AI Summary (Context + Evidence)
+    LLM-->>API: Synthesized Clinical Insight
+    API->>DB: Update Augmented FHIR Bundle
+    end
+
+    UI-->>User: Display AI Diagnostic Partner Insights
 ```
 
 ---
