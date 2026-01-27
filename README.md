@@ -21,13 +21,13 @@ By orchestrating **MedGemma 1.5 (4B)** within a recursive validation loop, the s
 ## Key Features
 
 - **🖼️ Collective Batch Processing**: Ingest up to 8 clinical images in a single session. The system processes them as a unified context, allowing the model to cross-reference evidence across multiple pages.
-- **🧠 Multi-Modality Classification (v1.4)**: Automatically identifies the document type (Radiology report, visual Scan, handwritten Prescription, or Vitals) and switches to an optimized extraction prompt for that specific modality.
+- **🧠 Multi-Modality Classification**: Automatically identifies the document type (Radiology report, visual Scan, handwritten Prescription, or Vitals) and switches to an optimized extraction prompt for that specific modality.
 - **🔬 Smart FHIR Viewer**: A premium, split-screen verification interface. Compare original evidence side-by-side with structured data, categorized into `Vital Signs`, `Lab Results`, and `Medications`.
 - **🧪 Ultra-High Precision Extraction**: Utilizes a strict **TSV Protocol** for 100% accurate extraction of complex Complete Blood Count (CBC) and Differential reports.
 - **🧬 FHIR R4 Perfection**:
   - **LOINC Integration**: Automatically maps extracted tests to global terminology standards (e.g., Haemoglobin -> `718-7`).
   - **Smart-Type Logic**: Automatically switches between `valueQuantity` and `valueString` to ensure strict schema compliance.
-- **🔐 Secure API Gateway (v1.3)**:
+- **🔐 Secure API Gateway**:
   - **Dynamic Provisioning**: Frontend clients auto-negotiate secure keys via `/api/v1/auth/register`.
   - **Database Persistence**: Keys are stored in PostgreSQL with granular role scopes and revocation capabilities.
 - **🤝 Collaborative Intelligence**:
@@ -105,7 +105,7 @@ sequenceDiagram
     API-->>UI: Render Clinical Standard View
 
     rect rgb(45, 35, 35)
-    Note over User, LLM: 🤝 Phase 4: Collaborative Synthesis (v1.4.1)
+    Note over User, LLM: 🤝 Phase 4: Collaborative Synthesis
     User->>UI: Add Clinical Context (Doctor's Notes)
     UI->>API: Update Notes & Trigger Synthesis
     API->>LLM: Rerun AI Summary (Context + Evidence)
