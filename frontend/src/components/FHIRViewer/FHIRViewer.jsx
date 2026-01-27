@@ -208,78 +208,91 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-7xl h-full max-h-[90vh] bg-[#0A0A0B] border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden relative"
       >
-        {/* Header content as before... */}
-        <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-white/[0.02]">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+        {/* Header content */}
+        <div className="h-16 border-b border-white/5 grid grid-cols-3 items-center px-6 bg-white/[0.02] shrink-0">
+          {/* Left Group: Patient Identity */}
+          <div className="flex items-center gap-4 overflow-hidden">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
               {patient ? (patient.name?.[0]?.given?.[0]?.[0] || 'P') : 'P'}
             </div>
-            <div>
-              <h2 className="text-white font-semibold text-sm">
+            <div className="min-w-0 pr-4">
+              <h2 
+                className="text-white font-semibold text-sm truncate max-w-[180px] cursor-help"
+                title={`${patient?.name?.[0]?.given?.join(' ') || 'Unknown Patient'} ${patient?.name?.[0]?.family || ''}`}
+              >
                  {patient?.name?.[0]?.given?.join(' ') || 'Unknown Patient'} {patient?.name?.[0]?.family || ''}
               </h2>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-mono bg-white/5 px-1.5 rounded text-white/60">ID: {localData?.patient_id}</span>
-                <span>•</span>
-                <span className="text-white/40">Refreshed: {lastUpdated}</span>
-                <span>•</span>
-                <span className="text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 size={10} /> FHIR R4 Validated
+                <span className="font-mono bg-white/5 px-1.5 rounded text-white/60 truncate">ID: {localData?.patient_id}</span>
+                <span className="text-white/20 shrink-0">•</span>
+                <span className="text-emerald-400 flex items-center gap-1 shrink-0">
+                  <CheckCircle2 size={10} /> Valid
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-black/20 p-1 rounded-full border border-white/5">
-             <button
-               onClick={() => setViewMode('clinical')}
-               className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
-                 viewMode === 'clinical' 
-                 ? 'bg-primary text-white shadow-lg' 
-                 : 'text-muted-foreground hover:text-white hover:bg-white/5'
-               }`}
-             >
-               <Stethoscope size={14} /> Clinical View
-             </button>
-             <button
-               onClick={() => setViewMode('json')}
-               className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
-                 viewMode === 'json' 
-                 ? 'bg-primary text-white shadow-lg' 
-                 : 'text-muted-foreground hover:text-white hover:bg-white/5'
-               }`}
-              >
-                <Code size={14} /> Raw JSON
-              </button>
-              <button
-                onClick={() => setViewMode('notes')}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
-                  viewMode === 'notes' 
-                  ? 'bg-primary text-white shadow-lg' 
-                  : 'text-muted-foreground hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <FileText size={14} /> Doctor's Note
-              </button>
+          {/* Center Group: View Switcher */}
+          <div className="flex justify-center">
+            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-full border border-white/5 shadow-inner backdrop-blur-sm">
+               <button
+                 onClick={() => setViewMode('clinical')}
+                 className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
+                   viewMode === 'clinical' 
+                   ? 'bg-primary text-white shadow-lg' 
+                   : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                 }`}
+               >
+                 <Stethoscope size={14} /> Clinical View
+               </button>
+               <button
+                 onClick={() => setViewMode('json')}
+                 className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
+                   viewMode === 'json' 
+                   ? 'bg-primary text-white shadow-lg' 
+                   : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                 }`}
+                >
+                  <Code size={14} /> Raw JSON
+                </button>
+                <button
+                  onClick={() => setViewMode('notes')}
+                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
+                    viewMode === 'notes' 
+                    ? 'bg-primary text-white shadow-lg' 
+                    : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <FileText size={14} /> Doctor's Note
+                </button>
+            </div>
           </div>
 
-          <button 
-            onClick={handleReload}
-            disabled={isReloading}
-            className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-muted-foreground transition-all border border-white/5 ${
-                isReloading ? 'bg-primary/20 text-primary border-primary/20' : 'hover:bg-white/10 hover:text-white'
-            }`}
-            title="Rerun MedGemma Analysis"
-          >
-            <RefreshCw size={18} className={isReloading ? 'animate-spin' : ''} />
-          </button>
+          {/* Right Group: Global Actions */}
+          <div className="flex items-center justify-end gap-3">
+            <div className="hidden md:flex flex-col items-end pr-2 border-r border-white/5 h-8 justify-center">
+               <span className="text-[10px] text-white/40 uppercase tracking-tighter">Last Refresh</span>
+               <span className="text-[10px] font-mono text-white/60 leading-none">{lastUpdated}</span>
+            </div>
+            
+            <button 
+              onClick={handleReload}
+              disabled={isReloading}
+              className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-muted-foreground transition-all border border-white/5 ${
+                  isReloading ? 'bg-primary/20 text-primary border-primary/20' : 'hover:bg-white/10 hover:text-white'
+              }`}
+              title="Rerun MedGemma Analysis"
+            >
+              <RefreshCw size={18} className={isReloading ? 'animate-spin' : ''} />
+            </button>
 
-          <button 
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-muted-foreground hover:text-white transition-colors"
-          >
-            <X size={18} />
-          </button>
+            <button 
+              onClick={onClose}
+              className="w-10 h-10 rounded-xl bg-white/5 hover:bg-red-500/20 hover:text-red-400 flex items-center justify-center text-muted-foreground transition-all border border-white/5"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Content Area */}
