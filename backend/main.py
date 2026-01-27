@@ -52,7 +52,8 @@ from backend.medgemma.persistence import (
     get_patients_directory,
     get_patient_history,
     create_api_key,
-    validate_api_key
+    validate_api_key,
+    update_doctor_notes
 )
 
 # --- Configuration ---
@@ -166,6 +167,9 @@ class IngestResponse(BaseModel):
     status: str
     db_persisted: bool
     fhir_bundle: Dict[str, Any]
+
+class DoctorNotesRequest(BaseModel):
+    notes: str
 
 
 
@@ -469,6 +473,20 @@ async def rerun_medgemma(submission_id: str):
     except Exception as e:
         logger.error(f"Rerun Failed for {submission_id}: {e}")
         raise HTTPException(500, f"Rerun Failed: {str(e)}")
+
+@app.post("/api/v1/submissions/{submission_id}/notes", dependencies=[Depends(verify_api_key)])
+async def save_doctor_notes(submission_id: str, request: DoctorNotesRequest):
+    """
+    **Save Doctor's Notes**
+    
+    Persists clinical notes added by the reviewer to the submission record.
+    """
+    success = update_doctor_notes(submission_id, request.notes)
+    if not success:
+        raise HTTPException(500, "Failed to save notes to database.")
+    
+    return {"status": "success", "submission_id": submission_id}
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -51,6 +51,14 @@ def init_db():
                 status VARCHAR(50)
             );
         """)
+        
+        # Add doctor_notes column if not exists
+        try:
+            cur.execute("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS doctor_notes TEXT;")
+        except Exception:
+            conn.rollback()
+        else:
+            conn.commit()
 
         # API Keys Table
         cur.execute("""
@@ -70,6 +78,8 @@ def init_db():
         logger.info("Database initialized (submissions + api_keys).")
     except Exception as e:
         logger.error(f"Database Initialization Failed: {e}")
+
+# ... (Previous existing functions: save_submission, get_submissions, get_submission, update_submission, get_patients_directory, get_patient_history) ...
 
 # ... (Previous existing functions: save_submission, get_submissions, get_submission, update_submission, get_patients_directory, get_patient_history) ...
 
@@ -151,8 +161,9 @@ def get_submissions(limit: int = 20) -> list:
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+        # Include doctor_notes in selection
         cur.execute(
-            "SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path FROM submissions ORDER BY created_at DESC LIMIT %s",
+            "SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path, doctor_notes FROM submissions ORDER BY created_at DESC LIMIT %s",
             (limit,)
         )
         rows = cur.fetchall()
@@ -175,7 +186,8 @@ def get_submissions(limit: int = 20) -> list:
                 "created_at": row[3].isoformat(),
                 "status": row[4],
                 "fhir_bundle": row[5],
-                "image_url": image_url
+                "image_url": image_url,
+                "doctor_notes": row[7]
             })
         cur.close()
         conn.close()
@@ -190,7 +202,7 @@ def get_submission(submission_id: str) -> Dict[str, Any]:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, patient_id, original_filename, file_path, fhir_bundle, status FROM submissions WHERE id = %s",
+            "SELECT id, patient_id, original_filename, file_path, fhir_bundle, status, doctor_notes FROM submissions WHERE id = %s",
             (submission_id,)
         )
         row = cur.fetchone()
@@ -203,7 +215,8 @@ def get_submission(submission_id: str) -> Dict[str, Any]:
                 "filename": row[2],
                 "file_path": row[3],
                 "fhir_bundle": row[4],
-                "status": row[5]
+                "status": row[5],
+                "doctor_notes": row[6]
             }
         return None
     except Exception as e:
@@ -225,6 +238,23 @@ def update_submission(submission_id: str, fhir_bundle: Dict[str, Any]) -> bool:
         return True
     except Exception as e:
         logger.error(f"Failed to update submission {submission_id}: {e}")
+        return False
+
+def update_doctor_notes(submission_id: str, notes: str) -> bool:
+    """Updates the doctor's notes for a submission."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE submissions SET doctor_notes = %s WHERE id = %s",
+            (notes, submission_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update doctor notes for {submission_id}: {e}")
         return False
 
 def get_patients_directory() -> list:
@@ -267,9 +297,10 @@ def get_patient_history(patient_id: str) -> list:
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+        # Include doctor_notes in selection
         cur.execute(
             """
-            SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path 
+            SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path, doctor_notes 
             FROM submissions 
             WHERE patient_id = %s 
             ORDER BY created_at DESC
@@ -294,7 +325,8 @@ def get_patient_history(patient_id: str) -> list:
                 "created_at": row[3].isoformat(),
                 "status": row[4],
                 "fhir_bundle": row[5],
-                "image_url": image_url
+                "image_url": image_url,
+                "doctor_notes": row[7]
             })
             
         cur.close()
@@ -303,3 +335,4 @@ def get_patient_history(patient_id: str) -> list:
     except Exception as e:
         logger.error(f"Failed to fetch history for {patient_id}: {e}")
         return []
+

@@ -17,7 +17,9 @@ import {
   Calendar,
   Copy,
   Check,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  Save
 } from 'lucide-react';
 
 const ClinicalCard = ({ title, value, unit, referenceRange, status, type }) => {
@@ -68,6 +70,17 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
   const [isReloading, setIsReloading] = useState(false);
   const [localData, setLocalData] = useState(data); // Track data locally if we reload
   const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString());
+  
+  // Doctor's Notes State
+  const [notes, setNotes] = useState(data?.doctor_notes || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Sync notes when localData updates (e.g. from reload)
+  useEffect(() => {
+    if (localData?.doctor_notes !== undefined) {
+        setNotes(localData.doctor_notes);
+    }
+  }, [localData]);
 
   // Sync with parent data if it refreshes in background, but don't overwrite during reload
   useEffect(() => {
@@ -157,6 +170,24 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
     }
   };
 
+  const handleSaveNotes = async () => {
+    setIsSaving(true);
+    try {
+        const { saveDoctorNotes, getStoredApiKeys } = await import('../../services/api');
+        const keys = getStoredApiKeys();
+        if (keys.length > 0) {
+            await saveDoctorNotes(localData.id, notes, keys[0].key);
+            // Update local state to reflect saved status
+            setLocalData(prev => ({ ...prev, doctor_notes: notes }));
+        }
+    } catch (error) {
+        console.error("Failed to save notes:", error);
+        alert("Failed to save notes. Please try again.");
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
   const getUnit = (obs) => {
     if (obs.valueQuantity) return obs.valueQuantity.unit;
     return '';
@@ -219,6 +250,16 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                }`}
               >
                 <Code size={14} /> Raw JSON
+              </button>
+              <button
+                onClick={() => setViewMode('notes')}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
+                  viewMode === 'notes' 
+                  ? 'bg-primary text-white shadow-lg' 
+                  : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <FileText size={14} /> Doctor's Note
               </button>
           </div>
 
@@ -447,6 +488,56 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                     </pre>
                 </div>
              )}
+
+             {viewMode === 'notes' && (
+                <div className="flex-1 flex flex-col p-6 bg-[#0A0A0B] relative overflow-hidden">
+                   <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col gap-4">
+                      
+                      <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                         <div>
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                               <FileText className="text-primary" size={20} />
+                               Doctor's Clinical Notes
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1">
+                               Add your observations and recommendations for this patient record.
+                            </p>
+                         </div>
+                         <button 
+                             onClick={handleSaveNotes}
+                             disabled={isSaving}
+                             className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${
+                                 isSaving 
+                                 ? 'bg-primary/50 cursor-wait' 
+                                 : 'bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-primary/20'
+                             }`}
+                         >
+                             {isSaving ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
+                             {isSaving ? 'Saving...' : 'Save Notes'}
+                         </button>
+                      </div>
+
+                      <div className="flex-1 relative">
+                          <textarea
+                             className="w-full h-full bg-white/5 border border-white/10 rounded-xl p-6 text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none font-sans text-sm leading-relaxed"
+                             placeholder="Start typing your clinical notes here..."
+                             value={notes}
+                             onChange={(e) => setNotes(e.target.value)}
+                          />
+                          <div className="absolute bottom-4 right-4 text-[10px] text-white/20 pointer-events-none">
+                             Markdown Supported
+                          </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-500/5 border border-blue-500/10 p-3 rounded-lg">
+                         <ShieldCheck size={14} className="text-blue-400" />
+                         <span>Notes are persisted securely in the PostgreSQL database and linked to Submission ID: <span className="font-mono text-white/50">{localData?.id?.slice(0,8)}</span></span>
+                      </div>
+                   </div>
+                </div>
+             )}
+
+
 
            </div>
         </div>

@@ -217,6 +217,30 @@ export const autoProvisionApiKey = async () => {
         console.error("Failed to provision API Key:", e);
         // Fallback or re-throw depending on desired behavior.
         // For now, we return null so the UI can prompt or retry.
+        // For now, we return null so the UI can prompt or retry.
         return null;
+    }
+};
+
+/**
+ * Save doctor's notes for a submission
+ * @param {string} submissionId
+ * @param {string} notes
+ * @param {string} apiKey
+ */
+export const saveDoctorNotes = async (submissionId, notes, apiKey) => {
+    try {
+        const response = await fetch(`${API_URL}/api/v1/submissions/${submissionId}/notes`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({ notes })
+        });
+        return await handleResponse(response);
+    } catch (error) {
+        console.error("Save notes failed:", error);
+        throw error;
     }
 };
