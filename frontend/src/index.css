@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -8,7 +8,7 @@
   :root {
     /* Human-Centered 'Calm Health' Theme (Zinc + Emerald) */
     /* Background: Neutral Zinc (less blue fatigue) */
-    --background: 240 10% 4%; 
+    --background: 240 10% 4%;
     --foreground: 240 10% 98%;
 
     /* Card: Lighter Zinc for better contrast (Lite Mode feel in Dark Mode) */
@@ -20,7 +20,7 @@
     --popover-foreground: 240 10% 98%;
 
     /* Primary: Emerald (Health, Safety, Calm) - replaced Electric Blue */
-    --primary: 158 64% 52%; 
+    --primary: 158 64% 52%;
     --primary-foreground: 144 65% 5%;
 
     /* Secondary: Warm Grey Surface */
@@ -44,7 +44,7 @@
     --ring: 158 64% 52%; /* Focus ring matches Primary */
 
     --radius: 1rem; /* Softer, friendlier corners */
-    
+
     --success: 142 71% 45%;
     --warning: 35 92% 50%;
   }
@@ -72,13 +72,28 @@
 }
 
 /* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  @apply bg-transparent; 
+  @apply bg-transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors; 
+  @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors;
 }
