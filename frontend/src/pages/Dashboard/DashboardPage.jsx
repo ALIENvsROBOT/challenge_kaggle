@@ -40,7 +40,7 @@ const DashboardPage = ({ onUploadClick, isProcessing, logs, refreshTrigger }) =>
       <div className="flex flex-col xl:flex-row items-start xl:items-end justify-between gap-6">
         <div className="max-w-2xl"> 
           <h1 className="text-4xl font-bold text-white mb-2 leading-tight">
-            Good evening, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-200">Dr. Sridhar</span>
+            Good evening, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-200">Dr. Gowtham Sridhar</span>
           </h1>
           <p className="text-muted-foreground text-lg">
             The system is ready. <span className="text-white font-medium">{activeCount} active patient stream{activeCount !== 1 ? 's' : ''}</span> require your attention.

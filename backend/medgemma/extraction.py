@@ -44,12 +44,14 @@ def build_classification_prompt() -> str:
         "LAB_REPORT\n"
         "RADIOLOGY_REPORT   (X-Ray, CT, MRI, Ultrasound)\n"
         "PRESCRIPTION       (Medication list)\n"
+        "VITALS             (Blood Pressure, Heart Rate, BMI check)\n"
         "OTHER\n"
         "\n"
         "Rules:\n"
         "- If it contains tabular blood test results, choose LAB_REPORT.\n"
         "- If it contains an image of a scan or text about 'Lungs', 'Heart', 'Bones' findings, choose RADIOLOGY_REPORT.\n"
         "- If it lists drugs/dosage, choose PRESCRIPTION.\n"
+        "- If it contains a list of vital signs (BP, Pulse, Temp), choose VITALS.\n"
         "- Output NOTHING else. No markdown."
     )
 
@@ -141,19 +143,46 @@ def build_meds_prompt() -> str:
         "- Output TSV only.\n"
     )
 
-def build_summary_prompt(notes: str = "") -> str:
+def build_summary_prompt(notes: str = "", modality: str = "LAB") -> str:
     """Step 3: Generate Intelligent Summary"""
     context_block = f"DOCTOR'S NOTES: {notes}\n" if notes else ""
-    return (
+    
+    # Base instructions
+    base_instructions = (
         "You are an expert Medical Consultant. Your task is to provide a concise clinical synthesis of the attached medical record/image.\n"
         "\n"
         f"{context_block}"
         "\n"
         "### INSTRUCTIONS ###\n"
-        "1. **Analyze Findings**: Summarize key abnormalities or critical values found in the image/report.\n"
-        "2. **Integrate Context**: If doctor's notes are present, analyze if they align with the image findings.\n"
-        "3. **Clinical Synthesis**: Write a single, cohesive paragraph (3-5 sentences) summarizing the patient's status.\n"
-        "4. **Action Plan**: List exactly 3 specific, non-repetitive recommendations.\n"
+    )
+
+    # Modality-specific focus
+    if modality == "RADIOLOGY" or modality == "X-RAY":
+        focus = (
+            "1. **Analyze Imaging Findings**: Focus on anatomical abnormalities (Lungs, Heart, Bones). Note any consolidations, fractures, or effusions.\n"
+            "2. **Diagnostic Impression**: Synthesize the 'Impression' or 'Conclusion' section. ignoring minor technical details.\n"
+        )
+    elif modality == "MEDS" or modality == "PRESCRIPTION":
+        focus = (
+            "1. **Review Medications**: Summarize the active drug regimen. Group by class (e.g., Antibiotics, Statins) if possible.\n"
+            "2. **Safety Check**: Briefly note potential major interactions or contraindications if evident from the context (or state 'No obvious conflicts').\n"
+        )
+    elif modality == "VITALS":
+        focus = (
+            "1. **Trend Analysis**: Focus on Blood Pressure, Heart Rate, and BMI. Identify values that are out of range (High/Low).\n"
+            "2. **Stability**: Assess if the patient appears hemodynamically stable based on these numbers.\n"
+        )
+    else: # Default LAB
+        focus = (
+            "1. **Analyze Lab Data**: Summarize key abnormalities (High/Low flags) or critical values found in the report.\n"
+            "2. **Hematology/Chemistry**: Specifically mention anemia, infection signs (WBC), or metabolic issues if present.\n"
+        )
+
+    # Common ending
+    common_ending = (
+        "3. **Integrate Context**: If doctor's notes are present, analyze if they align with the evidence.\n"
+        "4. **Clinical Synthesis**: Write a single, cohesive paragraph (3-5 sentences) summarizing the patient's status.\n"
+        "5. **Action Plan**: List exactly 3 specific, non-repetitive recommendations.\n"
         "\n"
         "### CONSTRAINTS ###\n"
         "- Do NOT repeat yourself.\n"
@@ -169,6 +198,8 @@ def build_summary_prompt(notes: str = "") -> str:
         "2. <Action 2>\n"
         "3. <Action 3>\n"
     )
+
+    return base_instructions + focus + common_ending
 def build_extraction_prompt() -> str:
     # Deprecated single-shot prompt, forwarded to Lab for backward compatibility if needed
     return build_lab_prompt()

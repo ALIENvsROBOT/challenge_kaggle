@@ -67,7 +67,7 @@ const Sidebar = ({ activeNav, setActiveNav }) => {
               <div className="absolute bottom-0 right-0 w-3 h-3 bg-success rounded-full border-2 border-card"></div>
            </div>
            <div className="hidden lg:block overflow-hidden">
-              <p className="text-sm font-semibold truncate text-white">Dr. Sridhar G.</p>
+              <p className="text-sm font-semibold truncate text-white">Dr. Gowtham Sridhar</p>
               <p className="text-xs text-muted-foreground">Chief Medical Officer</p>
            </div>
         </div>

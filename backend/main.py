@@ -206,6 +206,8 @@ def process_files_sync(file_paths: List[Path]) -> Dict[str, Any]:
                     doc_type = "RADIOLOGY_REPORT"
                 elif "PRESCRIPTION" in clean_type or "MEDICATION" in clean_type:
                     doc_type = "PRESCRIPTION"
+                elif "VITALS" in clean_type:
+                    doc_type = "VITALS"
                 elif "LAB" in clean_type:
                     doc_type = "LAB_REPORT"
             
@@ -216,6 +218,9 @@ def process_files_sync(file_paths: List[Path]) -> Dict[str, Any]:
                 prompt = build_radiology_prompt()
             elif doc_type == "PRESCRIPTION":
                 prompt = build_meds_prompt()
+            elif doc_type == "VITALS":
+                # Vitals are tabular, similar to labs. Use Lab prompt but we know it's Vitals.
+                prompt = build_lab_prompt()
             else:
                 prompt = build_lab_prompt()
 
@@ -245,9 +250,21 @@ def process_files_sync(file_paths: List[Path]) -> Dict[str, Any]:
                         mod_map = {
                             "RADIOLOGY_REPORT": "X-RAY",
                             "PRESCRIPTION": "MEDS",
+                            "VITALS": "VITALS",
                             "LAB_REPORT": "LAB"
                         }
                         extraction.setdefault("patient", {})["modality"] = mod_map.get(doc_type, "LAB")
+
+            # ... (Existing fallback logic lines 252-299 unchanged essentially, just showing context for replacement) ...
+            # SKIP TO generate_ai_summary_endpoint changes
+            
+            # Since I can't easily skip in ReplaceContent, I must only target the changes.
+            # I will split this into two calls or just target the block I need.
+            
+# Wait, I cannot use multiple disconnected blocks in ReplaceContent if I use SingleReplace.
+# I need to use MultiReplace or separate calls.
+# I will use separate calls for clarity.
+
 
             # C. Try AST Fallback
             if not extraction:
@@ -514,7 +531,45 @@ async def generate_ai_summary_endpoint(submission_id: str):
     # 2. Run AI
     try:
         with MedGemmaClient() as client:
-            prompt = build_summary_prompt(notes)
+            # Infer Modality from stored FHIR Bundle to use the correct prompt
+            fhir_bundle = sub.get("fhir_bundle") or {}
+            modality = "LAB"
+            
+            if fhir_bundle.get("entry"):
+                for entry in fhir_bundle["entry"]:
+                    res = entry.get("resource", {})
+                    rtype = res.get("resourceType")
+                    if rtype == "MedicationRequest":
+                        modality = "MEDS"
+                        break
+                    if rtype == "Observation":
+                        # Check category for Imaging or Vitals hints
+                        cats = res.get("category", [])
+                        cat_code = ""
+                        if cats and cats[0].get("coding"):
+                            cat_code = cats[0]["coding"][0].get("code", "").lower()
+                        
+                        if "imaging" in cat_code:
+                            modality = "RADIOLOGY"
+                            break
+                        
+                        # Heuristic for Vitals if not explicitly categorized
+                        if "vital" in cat_code:
+                            modality = "VITALS"
+                            break
+                        
+                        # Inspect code text for Vitals keywords if category is generic
+                        code_text = res.get("code", {}).get("text", "").lower()
+                        if any(x in code_text for x in ["blood pressure", "heart rate", "pulse", "bmi", "respiratory rate", "temperature"]):
+                            modality = "VITALS"
+                            # Don't break immediately, prioritize Imaging/Meds if present, but Vitals usually distinct.
+                            # Actually, if we find Vitals, we can stick with it unless we find Imaging later? 
+                            # But usually a file is one type.
+                            break
+
+            logger.info(f"Generating AI Summary for {submission_id} with Modality: {modality}")
+            
+            prompt = build_summary_prompt(notes, modality=modality)
             summary = client.query(prompt, image_paths=[Path(file_path)])
             if not summary:
                  raise ValueError("Model returned empty response.")
