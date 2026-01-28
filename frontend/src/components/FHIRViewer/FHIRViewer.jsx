@@ -21,7 +21,8 @@ import {
   FileText,
   Save,
   Sparkles,
-  Download
+  Download,
+  Table
 } from 'lucide-react';
 
 const ClinicalCard = ({ title, value, unit, referenceRange, status, type }) => {
@@ -307,46 +308,33 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
           {/* Center Group: View Switcher */}
           <div className="flex justify-center">
             <div className="flex items-center gap-1 bg-black/40 p-1 rounded-full border border-white/5 shadow-inner backdrop-blur-sm">
-               <button
-                 onClick={() => setViewMode('clinical')}
-                 className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
-                   viewMode === 'clinical' 
-                   ? 'bg-primary text-white shadow-lg' 
-                   : 'text-muted-foreground hover:text-white hover:bg-white/5'
-                 }`}
-               >
-                 <Stethoscope size={14} /> Clinical View
-               </button>
-               <button
-                 onClick={() => setViewMode('json')}
-                 className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
-                   viewMode === 'json' 
-                   ? 'bg-primary text-white shadow-lg' 
-                   : 'text-muted-foreground hover:text-white hover:bg-white/5'
-                 }`}
-                >
-                  <Code size={14} /> Raw JSON
-                </button>
-                <button
-                  onClick={() => setViewMode('notes')}
-                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
-                    viewMode === 'notes' 
-                    ? 'bg-primary text-white shadow-lg' 
-                    : 'text-muted-foreground hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <FileText size={14} /> Doctor's Note
-                </button>
-                <button
-                  onClick={() => setViewMode('ai_summary')}
-                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 ${
-                    viewMode === 'ai_summary' 
-                    ? 'bg-primary text-white shadow-lg' 
-                    : 'text-muted-foreground hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Sparkles size={14} /> AI Summary
-                </button>
+               {[
+                 { id: 'clinical', label: 'Clinical View', icon: <Stethoscope size={14} /> },
+                 { id: 'json', label: 'Raw JSON', icon: <Code size={14} /> },
+                 { id: 'extraction', label: 'Extraction', icon: <Table size={14} /> },
+                 { id: 'notes', label: "Doctor's Note", icon: <FileText size={14} /> },
+                 { id: 'ai_summary', label: 'AI Summary', icon: <Sparkles size={14} /> }
+               ].map((mode) => (
+                 <button
+                   key={mode.id}
+                   onClick={() => setViewMode(mode.id)}
+                   className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 relative ${
+                     viewMode === mode.id ? 'text-white' : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                   }`}
+                 >
+                   {viewMode === mode.id && (
+                     <Motion.div 
+                       layoutId="active-view-pill"
+                       className="absolute inset-0 bg-primary rounded-full shadow-lg shadow-primary/20"
+                       transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+                     />
+                   )}
+                   <span className="relative z-10 flex items-center gap-2">
+                     {mode.icon}
+                     {mode.label}
+                   </span>
+                 </button>
+               ))}
             </div>
           </div>
 
@@ -589,6 +577,66 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                     <pre className="text-xs font-mono text-blue-300 leading-relaxed">
                        {JSON.stringify(localData?.fhir_bundle || {}, null, 2)}
                     </pre>
+                </div>
+             )}
+
+             {viewMode === 'extraction' && (
+                <div className="flex-1 overflow-auto p-6 bg-[#0F0F10] custom-scrollbar relative flex flex-col">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                           <Table size={16} className="text-primary"/> Raw TSV Extraction (Evidence)
+                        </h3>
+                        <div className="flex items-center gap-4">
+                           <span className="text-[10px] text-muted-foreground bg-white/5 px-2 py-1 rounded border border-white/5 font-mono">
+                              MODALITY: {(localData?.fhir_bundle?.entry?.find(e => e.resource.resourceType === 'Observation')?.resource?.category?.[0]?.coding?.[0]?.code || 'LAB').toUpperCase()}
+                           </span>
+                           <span className="text-[10px] text-muted-foreground bg-white/5 px-2 py-1 rounded border border-white/5">
+                              MedGemma 1.5-4b-it
+                           </span>
+                        </div>
+                    </div>
+                    
+                    {localData?.raw_extraction ? (() => {
+                        const lines = localData.raw_extraction.trim().split('\n');
+                        // Heuristic to find the table start (skipping metadata lines with colons but no tabs)
+                        let tableStartIndex = lines.findIndex(l => l.includes('\t') || l.split(/\s{2,}/).length > 2);
+                        if (tableStartIndex === -1) tableStartIndex = 0;
+
+                        const headers = lines[tableStartIndex].split(/\t|\s{2,}/).filter(h => h.trim());
+                        const rows = lines.slice(tableStartIndex + 1).map(l => l.split(/\t|\s{2,}/).filter(c => c.trim())).filter(r => r.length > 0);
+
+                        return (
+                          <div className="flex-1 overflow-auto rounded-2xl border border-white/10 bg-black/40 shadow-inner group">
+                            <table className="w-full text-left border-collapse min-w-[600px]">
+                              <thead>
+                                <tr className="bg-white/5 border-b border-white/10 sticky top-0 z-10 backdrop-blur-xl">
+                                  {headers.map((h, i) => (
+                                    <th key={i} className="px-6 py-4 text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] border-r border-white/5 last:border-0">
+                                      {h}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5">
+                                {rows.map((row, i) => (
+                                  <tr key={i} className="hover:bg-primary/5 transition-all duration-200 group/row">
+                                    {row.map((cell, j) => (
+                                      <td key={j} className="px-6 py-4 text-xs font-mono text-amber-100/70 border-r border-white/[0.02] last:border-0 group-hover/row:text-amber-100 group-hover/row:bg-primary/[0.02]">
+                                        {cell}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                    })() : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-2">
+                             <Table size={32} className="opacity-10" />
+                             <p className="text-sm font-medium opacity-40">No ingestion evidence artifact found.</p>
+                        </div>
+                    )}
                 </div>
              )}
 

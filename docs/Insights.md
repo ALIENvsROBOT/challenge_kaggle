@@ -182,6 +182,26 @@ Our demonstration strategy highlights the **"Safety Moment"**—specifically sho
 
 ---
 
+## 9. Extreme Transparency (v1.8): The "Evidence" Artifact
+
+_Criterion: "Precision, transparency, and auditability of model outputs."_
+
+To move beyond the "AI Magic" trope, we implemented a **System Transparency Layer** designed specifically for medical auditors and high-stakes clinical verification.
+
+### A. The "Extraction" Tab (Proof of Work)
+
+We introduced a dedicated **Extraction View** in the clinical workbench that exposes the raw **TSV (Tab-Separated Values)** output directly from MedGemma 1.5.
+
+- **Objective Evidence:** Clinicians can toggle between the "Polished FHIR JSON" and the "Raw Data Artifact."
+- **Auditability:** It proves that the "Self-Healing" logic worked by showing the raw data _before_ normalization.
+- **Trust Building:** By showing the raw, high-precision TSV table (rendered with monospace precision), we demonstrate that the model is consistently recognizing structures, not just guessing words.
+
+### B. Why This Wins
+
+In the Kaggle MedGemma Challenge, this feature serves as the **"Confidence Score"** visual. It shows the judges that the system is built with a "Trust but Verify" philosophy—essential for any AI that touches a patient record.
+
+---
+
 ## Summary
 
 We are not selling a "Chatbot". We are selling a **Self-Correcting Data Bridge** that turns dangerous, unstructured images into safe, standardized medical records—verified by humans, validated by code, and visualized for high-stakes clinical decisions.

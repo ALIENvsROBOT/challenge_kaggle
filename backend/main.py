@@ -60,7 +60,7 @@ from backend.medgemma.persistence import (
 
 # --- Configuration ---
 API_TITLE = "MedGemma FHIR-Bridge API"
-API_VERSION = "1.0.0"
+API_VERSION = "1.2.0"
 
 # Logging Setup
 logger = logging.getLogger("medgemma_api")
@@ -169,6 +169,7 @@ class IngestResponse(BaseModel):
     status: str
     db_persisted: bool
     fhir_bundle: Dict[str, Any]
+    raw_extraction: Optional[str] = None
 
 class DoctorNotesRequest(BaseModel):
     notes: str
@@ -178,7 +179,7 @@ class DoctorNotesRequest(BaseModel):
 
 # --- Helper Methods ---
 
-def process_files_sync(file_paths: List[Path]) -> Dict[str, Any]:
+def process_files_sync(file_paths: List[Path]) -> tuple[Dict[str, Any], str]:
     """
     Two-Pass Processing Pipeline:
     1. Classification: Identify Document Type (Lab/Rad/Meds)
@@ -307,7 +308,7 @@ def process_files_sync(file_paths: List[Path]) -> Dict[str, Any]:
                 logger.error(f"FHIR Bundle Invalid: {fhir_errors}")
             
             logger.info(f"Final FHIR Bundle generated: {json.dumps(bundle)[:1000]}...") # Log beginning of bundle
-            return bundle
+            return bundle, candidate
 
     except Exception as e:
         logger.exception("Processing Failed")
@@ -368,7 +369,7 @@ async def ingest_medical_record(
     
     try:
         # 3. Processing (Blocking Call with all images)
-        fhir_bundle = process_files_sync(saved_paths)
+        fhir_bundle, raw_extraction = process_files_sync(saved_paths)
         
         # Inject known patient_id
         if fhir_bundle.get("entry"):
@@ -387,7 +388,8 @@ async def ingest_medical_record(
             patient_id=patient_id, 
             filename=", ".join(original_filenames), 
             file_path=str(saved_paths[0]) if saved_paths else "", # Primary path
-            fhir_bundle=fhir_bundle
+            fhir_bundle=fhir_bundle,
+            raw_extraction=raw_extraction
         )
 
         return {
@@ -395,7 +397,8 @@ async def ingest_medical_record(
             "patient_id": patient_id,
             "status": "completed",
             "db_persisted": persisted_ok,
-            "fhir_bundle": fhir_bundle
+            "fhir_bundle": fhir_bundle,
+            "raw_extraction": raw_extraction
         }
         
     except ValueError as ve:
@@ -466,7 +469,7 @@ async def rerun_medgemma(submission_id: str):
 
         # 2. Rerun processing
         logger.info(f"Rerunning MedGemma for submission: {submission_id}")
-        fhir_bundle = process_files_sync([file_path])
+        fhir_bundle, raw_extraction = process_files_sync([file_path])
         
         # 3. Inject original metadata
         if fhir_bundle.get("entry"):

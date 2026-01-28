@@ -48,7 +48,10 @@ def init_db():
                 original_filename VARCHAR(255),
                 file_path VARCHAR(255),
                 fhir_bundle JSONB,
-                status VARCHAR(50)
+                status VARCHAR(50),
+                raw_extraction TEXT,
+                doctor_notes TEXT,
+                ai_summary TEXT
             );
         """)
 
@@ -81,7 +84,15 @@ def init_db():
         except Exception as e:
             conn.rollback()
             logger.warning(f"Migration (ai_summary) skipped or failed: {e}")
-            
+
+        # Raw Extraction (TSV)
+        try:
+            cur.execute("ALTER TABLE submissions ADD COLUMN IF NOT EXISTS raw_extraction TEXT;")
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"Migration (raw_extraction) skipped or failed: {e}")
+                        
         cur.close()
         conn.close()
         logger.info("Database initialized (submissions + api_keys).")
@@ -140,7 +151,8 @@ def save_submission(
     patient_id: str, 
     filename: str, 
     file_path: str, 
-    fhir_bundle: Dict[str, Any]
+    fhir_bundle: Dict[str, Any],
+    raw_extraction: str = None
 ) -> bool:
     """
     Persists a processed submission to the database.
@@ -151,10 +163,10 @@ def save_submission(
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO submissions (id, patient_id, original_filename, file_path, fhir_bundle, status)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO submissions (id, patient_id, original_filename, file_path, fhir_bundle, status, raw_extraction)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             """,
-            (submission_id, patient_id, filename, file_path, Json(fhir_bundle), "completed")
+            (submission_id, patient_id, filename, file_path, Json(fhir_bundle), "completed", raw_extraction)
         )
         conn.commit()
         cur.close()
@@ -172,7 +184,7 @@ def get_submissions(limit: int = 20) -> list:
         cur = conn.cursor()
         # Include doctor_notes, ai_summary in selection
         cur.execute(
-            "SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path, doctor_notes, ai_summary FROM submissions ORDER BY created_at DESC LIMIT %s",
+            "SELECT id, patient_id, original_filename, created_at, status, fhir_bundle, file_path, doctor_notes, ai_summary, raw_extraction FROM submissions ORDER BY created_at DESC LIMIT %s",
             (limit,)
         )
         rows = cur.fetchall()
@@ -197,7 +209,8 @@ def get_submissions(limit: int = 20) -> list:
                 "fhir_bundle": row[5],
                 "image_url": image_url,
                 "doctor_notes": row[7],
-                "ai_summary": row[8]
+                "ai_summary": row[8],
+                "raw_extraction": row[9]
             })
         cur.close()
         conn.close()
@@ -212,7 +225,7 @@ def get_submission(submission_id: str) -> Dict[str, Any]:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, patient_id, original_filename, file_path, fhir_bundle, status, doctor_notes, ai_summary FROM submissions WHERE id = %s",
+            "SELECT id, patient_id, original_filename, file_path, fhir_bundle, status, doctor_notes, ai_summary, raw_extraction FROM submissions WHERE id = %s",
             (submission_id,)
         )
         row = cur.fetchone()
@@ -227,7 +240,10 @@ def get_submission(submission_id: str) -> Dict[str, Any]:
                 "fhir_bundle": row[4],
                 "status": row[5],
                 "doctor_notes": row[6],
-                "ai_summary": row[7]
+                "status": row[5],
+                "doctor_notes": row[6],
+                "ai_summary": row[7],
+                "raw_extraction": row[8]
             }
         return None
     except Exception as e:
