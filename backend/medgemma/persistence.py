@@ -18,6 +18,7 @@ DB_USER = os.getenv("POSTGRES_USER", "medgemma_user")
 DB_PASS = os.getenv("POSTGRES_PASSWORD", "dev_secret")
 
 logger = logging.getLogger(__name__)
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 def get_db_connection():
     """Establishes a connection to the PostgreSQL database."""
@@ -198,7 +199,7 @@ def get_submissions(limit: int = 20) -> list:
                 filename = os.path.basename(file_path)
                 # Assume backend host is handled by proxy or absolute URL construction in frontend
                 # For now returning relative path that matches the mounted static route
-                image_url = f"http://localhost:8000/static/{filename}" 
+                image_url = f"{BACKEND_URL}/static/{filename}" 
 
             submissions.append({
                 "id": str(row[0]),
@@ -358,7 +359,7 @@ def get_patient_history(patient_id: str) -> list:
             image_url = None
             if file_path:
                 filename = os.path.basename(file_path)
-                image_url = f"http://localhost:8000/static/{filename}"
+                image_url = f"{BACKEND_URL}/static/{filename}"
 
             history.append({
                 "id": str(row[0]),

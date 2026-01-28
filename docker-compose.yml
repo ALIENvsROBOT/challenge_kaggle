@@ -37,8 +37,10 @@ services:
     container_name: medgemma_api_dev
     command: ["uv", "run", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     env_file: .env
+    environment:
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:8001}
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8001}:8000"
     volumes:
       # Mount entire project for live editing
       - .:/app
@@ -66,7 +68,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://localhost:8001
     depends_on:
       - backend
     networks:

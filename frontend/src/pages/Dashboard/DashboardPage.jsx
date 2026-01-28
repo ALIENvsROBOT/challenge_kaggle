@@ -14,7 +14,8 @@ const DashboardPage = ({ onUploadClick, isProcessing, logs, refreshTrigger }) =>
         try {
            const keys = JSON.parse(localStorage.getItem('medgemma_api_keys') || '[]');
            if (keys.length > 0) {
-              const res = await fetch(`http://localhost:8000/api/v1/submissions?limit=50`, {
+              const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+              const res = await fetch(`${API_URL}/api/v1/submissions?limit=50`, {
                  headers: { 'Authorization': `Bearer ${keys[0].key}` }
               });
               const data = await res.json();
