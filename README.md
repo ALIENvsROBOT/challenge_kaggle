@@ -41,6 +41,16 @@ By orchestrating **MedGemma 1.5 (4B)** within a recursive validation loop, the s
 
 ---
 
+## 📂 Testing & Evaluation Datasets
+
+To evaluate the system's multimodal extraction capabilities, the following Kaggle datasets are utilized for testing:
+
+- **📝 Handwritten Prescriptions**: [Illegible Medical Prescription Images](https://www.kaggle.com/datasets/mehaksingal/illegible-medical-prescription-images-dataset/data)
+- **🩻 Radiology (X-Ray)**: [Chest X-Ray Images (Pneumonia)](https://www.kaggle.com/datasets/paultimothymooney/chest-xray-pneumonia)
+- **🧪 Lab Reports (CBC/Biochemistry)**: [Medical Lab Reports (Bajaj)](https://www.kaggle.com/datasets/dikshaasinghhh/bajaj)
+
+---
+
 ## The Solution: A Self-Healing Edge Architecture
 
 Our solution treats medical data extraction as a multi-step engineering problem rather than a simple text generation task.
