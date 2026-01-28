@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { 
   X, 
   Code, 
@@ -318,7 +320,7 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                  <button
                    key={mode.id}
                    onClick={() => setViewMode(mode.id)}
-                   className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 relative ${
+                   className={`px-4 h-9 rounded-full text-xs font-medium transition-all flex items-center gap-2 relative whitespace-nowrap overflow-hidden ${
                      viewMode === mode.id ? 'text-white' : 'text-muted-foreground hover:text-white hover:bg-white/5'
                    }`}
                  >
@@ -326,7 +328,8 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                      <Motion.div 
                        layoutId="active-view-pill"
                        className="absolute inset-0 bg-primary rounded-full shadow-lg shadow-primary/20"
-                       transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+                       initial={false}
+                       transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
                      />
                    )}
                    <span className="relative z-10 flex items-center gap-2">
@@ -606,12 +609,12 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                         const rows = lines.slice(tableStartIndex + 1).map(l => l.split(/\t|\s{2,}/).filter(c => c.trim())).filter(r => r.length > 0);
 
                         return (
-                          <div className="flex-1 overflow-auto rounded-2xl border border-white/10 bg-black/40 shadow-inner group">
-                            <table className="w-full text-left border-collapse min-w-[600px]">
+                          <div className="flex-1 overflow-auto rounded-2xl border border-white/10 bg-black/40 shadow-inner group custom-scrollbar">
+                            <table className="w-full text-left border-collapse table-auto">
                               <thead>
                                 <tr className="bg-white/5 border-b border-white/10 sticky top-0 z-10 backdrop-blur-xl">
                                   {headers.map((h, i) => (
-                                    <th key={i} className="px-6 py-4 text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] border-r border-white/5 last:border-0">
+                                    <th key={i} className="px-6 py-4 text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] border-r border-white/5 last:border-0 whitespace-nowrap">
                                       {h}
                                     </th>
                                   ))}
@@ -619,10 +622,12 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                               </thead>
                               <tbody className="divide-y divide-white/5">
                                 {rows.map((row, i) => (
-                                  <tr key={i} className="hover:bg-primary/5 transition-all duration-200 group/row">
+                                  <tr key={i} className="hover:bg-primary/5 transition-all duration-200 group/row even:bg-white/[0.01]">
                                     {row.map((cell, j) => (
                                       <td key={j} className="px-6 py-4 text-xs font-mono text-amber-100/70 border-r border-white/[0.02] last:border-0 group-hover/row:text-amber-100 group-hover/row:bg-primary/[0.02]">
-                                        {cell}
+                                        <div className="max-w-md truncate md:max-w-none md:whitespace-normal">
+                                          {cell}
+                                        </div>
                                       </td>
                                     ))}
                                   </tr>
@@ -745,15 +750,15 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                                       <Sparkles size={16} /> Generate Summary
                                   </button>
                               </div>
-                          ) : (
-                               <div className="flex-1 p-8 pr-12 overflow-y-auto custom-scrollbar min-h-0 h-full">
-                                  <article className="prose prose-invert prose-sm max-w-none">
-                                      <p className="whitespace-pre-wrap leading-relaxed text-white/90 text-sm md:text-base font-sans">
-                                          {aiSummary}
-                                      </p>
-                                  </article>
-                              </div>
-                          )}
+                           ) : (
+                                <div className="flex-1 p-8 pr-12 overflow-y-auto custom-scrollbar min-h-0 h-full">
+                                   <article className="prose prose-invert prose-emerald prose-sm max-w-none prose-p:leading-relaxed prose-headings:text-white prose-p:text-white/90 prose-strong:text-emerald-400 prose-ul:list-disc">
+                                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                           {aiSummary}
+                                       </ReactMarkdown>
+                                   </article>
+                               </div>
+                           )}
                       </div>
                       
                       {aiSummary && (
