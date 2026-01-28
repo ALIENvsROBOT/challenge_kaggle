@@ -50,9 +50,7 @@ jobs:
 
       - name: Docker Config Validation
         run: |
-          # Create dummy env files from example to satisfy config validation
+          # Create dummy env file from example to satisfy config validation
           cp .env.example .env
-          cp .env.example .env.prod
-          docker compose -f docker-compose.dev.yml config > /dev/null
-          docker compose -f docker-compose.prod.yml config > /dev/null
+          docker compose config > /dev/null
           echo "Docker configuration is valid."

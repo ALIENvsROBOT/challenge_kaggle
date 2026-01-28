@@ -240,8 +240,6 @@ def get_submission(submission_id: str) -> Dict[str, Any]:
                 "fhir_bundle": row[4],
                 "status": row[5],
                 "doctor_notes": row[6],
-                "status": row[5],
-                "doctor_notes": row[6],
                 "ai_summary": row[7],
                 "raw_extraction": row[8]
             }

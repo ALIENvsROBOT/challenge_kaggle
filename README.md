@@ -128,6 +128,25 @@ sequenceDiagram
 
 ---
 
+## ⚡ Quick Start with Docker
+
+The fastest way to get the entire pipeline (UI + API + Database) running is using Docker:
+
+1.  **Configure Environment**:
+    ```bash
+    cp .env.example .env
+    # Edit .env with your medGemma_endpoint and medGemma_api_key
+    ```
+2.  **Launch Dashboard**:
+    ```bash
+    docker compose up -d --build
+    ```
+3.  **Access:**
+    - **Dashboard UI**: [http://localhost:3000](http://localhost:3000)
+    - **API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
 ## Technical Stack
 
 | Component        | Technology                | Role                                                       |
