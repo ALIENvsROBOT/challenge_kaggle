@@ -100,7 +100,8 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
     if (localData?.ai_summary !== undefined && localData.ai_summary !== aiSummary) {
         setAiSummary(localData.ai_summary);
     }
-  }, [localData]);
+  }, [localData, aiSummary]);
+
 
   // Sync with parent data if it refreshes in background, but don't overwrite during reload
   useEffect(() => {
