@@ -1,8 +1,52 @@
-# Project Setup with uv
+# MedGemma FHIR-Bridge Setup Guide
 
-This project uses [uv](https://github.com/astral-sh/uv) for extremely fast, reliable dependency management. This ensures that all developers are using the exact same versions of packages.
+This project is containerized for easy deployment and development using **Docker Compose**. This is the recommended way to run the application.
 
-## 1. Install uv
+## 🚀 Quick Start (Docker Compose)
+
+The easiest way to get the entire stack (Frontend + Backend + Database) running.
+
+### 1. Prerequisites
+
+- **Docker Desktop** (Windows/Mac) or **Docker Engine** (Linux)
+- Git
+
+### 2. Configure Environment
+
+Create your environment file from the example:
+
+```bash
+cp .env.example .env
+```
+
+**Important:** Open `.env` and set your `medGemma_api_key` and vLLM endpoint configuration.
+
+### 3. Launch the Stack
+
+Run the following command in the project root:
+
+```bash
+docker compose up --build
+```
+
+This will spin up:
+
+- **Database:** PostgreSQL 15 (Port 5432)
+- **Backend:** FastAPI with Hot-Reload (Port 8000)
+- **Frontend:** React/Vite (Port 3000)
+
+### 4. Access the Application
+
+- **Frontend UI:** [http://localhost:3000](http://localhost:3000)
+- **API Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## 🛠️ Advanced: Local Development (Non-Docker)
+
+If you prefer to run services locally on your machine (e.g. for debugging specific Python logic), we use [uv](https://github.com/astral-sh/uv) for fast dependency management.
+
+### 1. Install uv
 
 **Windows (PowerShell):**
 
@@ -16,46 +60,40 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-_Don't forget to restart your terminal after installation if the `uv` command is not found._
+### 2. Install Python Dependencies
 
-## 2. Set Up the Project
+Navigate to the project root and sync dependencies:
 
-Navigate to the project directory and run:
-
-```sh
+```bash
 uv sync
 ```
 
-This command will:
+_This creates a `.venv` with all required packages locked._
 
-1.  Create a virtual environment (`.venv`) if one doesn't exist.
-2.  Install all dependencies defined in `uv.lock` exactly as specified.
+### 3. Run the Database
 
-## 3. Running Code
+You still need a database. You can run just the DB via Docker:
 
-You can run scripts using `uv run`, which automatically uses the correct environment:
-
-```sh
-uv run Test/Test_medgemma_api.py
+```bash
+docker compose up -d db
 ```
 
-Or you can activate the virtual environment manually:
+### 4. Run the Backend
 
-- **Windows**: `.\.venv\Scripts\activate`
-- **Linux/Mac**: `source .venv/bin/activate`
+Start the FastAPI server locally:
 
-## 4. Managing Dependencies
-
-To add a new library (this will automatically update `pyproject.toml` and `uv.lock`):
-
-```sh
-uv add <package_name>
+```bash
+uv run uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Example:**
+### 5. Run the Frontend
 
-```sh
-uv add pandas
+Open a new terminal for the frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-**Important**: Always commit `pyproject.toml` and `uv.lock` to Git. This ensures other developers get the exact same environment when they run `uv sync`.
+_Frontend will be available at usually http://localhost:5173 (check terminal output)._

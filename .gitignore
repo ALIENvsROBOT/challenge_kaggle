@@ -7,4 +7,5 @@ temp_output.log
 .env.prod
 
 # Data and Artifacts
-uploaded_files/
+uploaded_files/*
+!uploaded_files/.gitkeep
