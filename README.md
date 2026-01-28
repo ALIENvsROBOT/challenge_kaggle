@@ -133,10 +133,27 @@ sequenceDiagram
 The fastest way to get the entire pipeline (UI + API + Database) running is using Docker:
 
 1.  **Configure Environment**:
+
     ```bash
     cp .env.example .env
-    # Edit .env with your medGemma_endpoint and medGemma_api_key
     ```
+
+    **Critical Configuration Parameters:**
+
+    | Parameter           | Description                     | Example                               |
+    | ------------------- | ------------------------------- | ------------------------------------- |
+    | `medGemma_endpoint` | vLLM OpenAI-compatible endpoint | `http://host.docker.internal:8001/v1` |
+    | `medGemma_api_key`  | API key for vLLM authentication | `your-vllm-key-here`                  |
+    | `medGemma_model`    | Model identifier                | `google/medgemma-1.5-4b-it`           |
+    | `POSTGRES_PASSWORD` | Database password               | Change from default!                  |
+    | `VITE_API_URL`      | Frontend API endpoint           | `http://localhost:8000`               |
+
+    **Advanced Options** (see `.env.example` for full list):
+    - `medGemma_strict_extraction` - Force high compliance validation
+    - `medGemma_image_retry_limit` - Retry logic configuration
+    - `medGemma_require_expected_tests` - Hallucination prevention flags
+    - `medGemma_min_observations` - Minimum observation requirements
+
 2.  **Launch Dashboard**:
     ```bash
     docker compose up -d --build
@@ -149,16 +166,52 @@ For detailed manual installation or development setup, see [docs/setup.md](docs/
 
 ---
 
+## 📚 Documentation
+
+For in-depth technical information, please refer to:
+
+- **[Setup Guide](docs/setup.md)** - Detailed installation and development setup instructions
+- **[Architecture & Insights](docs/Insights.md)** - Deep-dive into the "Self-Healing" architecture, design decisions, and validation methodology
+- **[API Security](docs/API_SECURITY.md)** - Database-backed authentication and authorization model
+
+---
+
 ## Technical Stack
 
-| Component        | Technology                | Role                                                       |
-| :--------------- | :------------------------ | :--------------------------------------------------------- |
-| **Intelligence** | **MedGemma 1.5 (4B)**     | Multimodal reasoning & extraction logic.                   |
-| **Serving**      | **vLLM**                  | High-throughput OpenAI-compatible inference engine.        |
-| **Backend**      | **FastAPI / Python**      | Secure API Gateway and "Self-Healing" logic.               |
-| **Database**     | **PostgreSQL**            | Persistent storage of patient records and FHIR Bundles.    |
-| **Frontend**     | **React 19 / Vite**       | Premium dark-mode dashboard with real-time sync.           |
-| **CI/CD**        | **GitHub Actions / Ruff** | Automated Docker config validation and high-speed linting. |
+| Component        | Technology                        | Role                                                                                                        |
+| :--------------- | :-------------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| **Intelligence** | **MedGemma 1.5 (4B)**             | Multimodal reasoning & extraction logic.                                                                    |
+| **Serving**      | **vLLM**                          | High-throughput OpenAI-compatible inference engine.                                                         |
+| **Backend**      | **FastAPI / Python**              | Secure API Gateway and "Self-Healing" logic.                                                                |
+| **Database**     | **PostgreSQL**                    | Persistent storage of patient records and FHIR Bundles.                                                     |
+| **Frontend**     | **React 19 / Vite / TailwindCSS** | Premium dark-mode dashboard with animations (Framer Motion) and real-time sync.                             |
+| **CI/CD**        | **GitHub Actions / Ruff**         | Automated frontend build, backend linting (Ruff), Python compilation checks, and Docker Compose validation. |
+
+---
+
+## 🏗️ Backend Architecture
+
+The backend follows a modular service-oriented architecture:
+
+```
+backend/
+├── main.py                    # FastAPI application entry point
+├── medGemma_processor.py      # Core orchestration logic
+└── medgemma/
+    ├── client.py              # vLLM API client
+    ├── extraction.py          # Semantic firewall & validation logic
+    ├── persistence.py         # Database & file storage handlers
+    ├── prompts.py             # Classification & extraction prompts
+    ├── fhir_builder.py        # FHIR R4 bundle construction
+    └── loinc_mapping.py       # LOINC/SNOMED terminology mapping
+```
+
+**Key Design Principles:**
+
+- **Separation of Concerns**: Each module has a single, well-defined responsibility
+- **Type Safety**: Full Pydantic model validation for all API requests/responses
+- **Self-Healing Logic**: Multi-stage validation pipeline in `extraction.py`
+- **Persistence Layer**: Atomic operations with rollback capabilities
 
 ---
 
@@ -216,4 +269,15 @@ sudo podman run -d --name vllm-medgemma \
 
 ---
 
-_Developed for the MedGemma Impact Challenge 2025._
+---
+
+## 📞 Contact & Submission
+
+**Challenge:** [MedGemma Impact Challenge 2025](https://www.kaggle.com/competitions/medgemma-impact-challenge)  
+**Repository:** [GitHub - Update before submission]  
+**Demo Video:** [YouTube - Update before submission]  
+**Team Contact:** [Your Email/Contact Info]
+
+---
+
+_Developed with ❤️ for healthcare interoperability and patient safety._
