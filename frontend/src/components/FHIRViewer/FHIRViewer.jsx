@@ -751,9 +751,20 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                                   </button>
                               </div>
                            ) : (
-                                <div className="flex-1 p-8 pr-12 overflow-y-auto custom-scrollbar min-h-0 h-full">
-                                   <article className="prose prose-invert prose-emerald prose-sm max-w-none prose-p:leading-relaxed prose-headings:text-white prose-p:text-white/90 prose-strong:text-emerald-400 prose-ul:list-disc">
-                                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                 <div className="flex-1 p-8 pr-12 overflow-y-auto custom-scrollbar min-h-0 h-full">
+                                   <article className="max-w-none">
+                                       <ReactMarkdown 
+                                         remarkPlugins={[remarkGfm]}
+                                         components={{
+                                           ul: ({node, ...props}) => <ul style={{ listStyleType: 'disc' }} className="ml-6 my-4 space-y-2 block text-white/80" {...props} />,
+                                           ol: ({node, ...props}) => <ol style={{ listStyleType: 'decimal' }} className="ml-6 my-4 space-y-2 block text-white/80" {...props} />,
+                                           li: ({node, ...props}) => <li className="pl-1 mb-2 marker:text-emerald-500" {...props} />,
+                                           h2: ({node, ...props}) => <h2 className="text-xl font-bold text-white mt-10 first:mt-0 mb-4 border-b border-white/10 pb-2 uppercase tracking-tight" {...props} />,
+                                           h3: ({node, ...props}) => <h3 className="text-lg font-semibold text-white mt-8 first:mt-0 mb-3" {...props} />,
+                                           p: ({node, ...props}) => <p className="leading-relaxed text-white/80 mb-6 first:mt-0" {...props} />,
+                                           strong: ({node, ...props}) => <strong className="text-emerald-400 font-bold" {...props} />,
+                                         }}
+                                       >
                                            {aiSummary}
                                        </ReactMarkdown>
                                    </article>
