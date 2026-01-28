@@ -32,7 +32,7 @@ We treat AI as a **"Junior Resident"** whose work must pass through rigorous val
 
 #### **Layer 1: The Reader (MedGemma 1.5 via vLLM)**
 
-- **Multi-Image Collective Reasoning**: Unlike single-shot OCR, we feed up to **8 clinical images** into a unified prompt, allowing the model to cross-reference evidence across pages (e.g., "Page 1 shows medication, Page 2 shows dosage").
+- **Multi-Image Collective Reasoning**: Unlike single-shot OCR, we feed up to **8 clinical images** into a unified prompt, allowing the model to cross-reference evidence across multiple images (e.g., correlating medication information with dosage details from separate documents).
 - **Modality-Aware Prompting**: A two-pass system first classifies the document type (Lab/Radiology/Prescription/Vitals), then switches to a specialized extraction protocol optimized for that clinical context.
 
 #### **Layer 2: The Auditor (Semantic Firewall)**
@@ -53,7 +53,7 @@ This isn't just automation—it's **augmentation**:
 
 ---
 
-## **Page 2: Technical Depth & Differentiators**
+## **Technical Depth & Differentiators**
 
 ### **Why This Architecture Wins Over "Black Box" AI**
 
@@ -119,7 +119,7 @@ By outputting **FHIR R4 bundles**, the system enables:
 
 ---
 
-## **Page 3: Validation, Demonstration & Future Potential**
+## **Validation, Demonstration & Future Potential**
 
 ### **Testing Methodology: Real-World Chaos**
 
