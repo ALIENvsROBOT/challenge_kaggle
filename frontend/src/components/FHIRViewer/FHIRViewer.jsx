@@ -756,13 +756,13 @@ const FHIRViewer = ({ data, onClose, onRefresh }) => {
                                        <ReactMarkdown 
                                          remarkPlugins={[remarkGfm]}
                                          components={{
-                                           ul: ({node, ...props}) => <ul style={{ listStyleType: 'disc' }} className="ml-6 my-4 space-y-2 block text-white/80" {...props} />,
-                                           ol: ({node, ...props}) => <ol style={{ listStyleType: 'decimal' }} className="ml-6 my-4 space-y-2 block text-white/80" {...props} />,
-                                           li: ({node, ...props}) => <li className="pl-1 mb-2 marker:text-emerald-500" {...props} />,
-                                           h2: ({node, ...props}) => <h2 className="text-xl font-bold text-white mt-10 first:mt-0 mb-4 border-b border-white/10 pb-2 uppercase tracking-tight" {...props} />,
-                                           h3: ({node, ...props}) => <h3 className="text-lg font-semibold text-white mt-8 first:mt-0 mb-3" {...props} />,
-                                           p: ({node, ...props}) => <p className="leading-relaxed text-white/80 mb-6 first:mt-0" {...props} />,
-                                           strong: ({node, ...props}) => <strong className="text-emerald-400 font-bold" {...props} />,
+                                           ul: ({node: _node, ...props}) => <ul style={{ listStyleType: 'disc' }} className="ml-6 my-4 space-y-2 block text-white/80" {...props} />,
+                                           ol: ({node: _node, ...props}) => <ol style={{ listStyleType: 'decimal' }} className="ml-6 my-4 space-y-2 block text-white/80" {...props} />,
+                                           li: ({node: _node, ...props}) => <li className="pl-1 mb-2 marker:text-emerald-500" {...props} />,
+                                           h2: ({node: _node, ...props}) => <h2 className="text-xl font-bold text-white mt-10 first:mt-0 mb-4 border-b border-white/10 pb-2 uppercase tracking-tight" {...props} />,
+                                           h3: ({node: _node, ...props}) => <h3 className="text-lg font-semibold text-white mt-8 first:mt-0 mb-3" {...props} />,
+                                           p: ({node: _node, ...props}) => <p className="leading-relaxed text-white/80 mb-6 first:mt-0" {...props} />,
+                                           strong: ({node: _node, ...props}) => <strong className="text-emerald-400 font-bold" {...props} />,
                                          }}
                                        >
                                            {aiSummary}
