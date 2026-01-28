@@ -145,6 +145,8 @@ The fastest way to get the entire pipeline (UI + API + Database) running is usin
     - **Dashboard UI**: [http://localhost:3000](http://localhost:3000)
     - **API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
+For detailed manual installation or development setup, see [docs/setup.md](docs/setup.md).
+
 ---
 
 ## Technical Stack
@@ -211,14 +213,6 @@ sudo podman run -d --name vllm-medgemma \
   --gpu-memory-utilization 0.30 \
   --limit-mm-per-prompt '{"image": 8}' # Enables Batch Ingestion
 ```
-
----
-
-## Future Roadmap
-
-- **EHR Integration:** Direct adapters for HL7 v2 over MLLP.
-- **Edge Deployment:** Optimization for NVIDIA Jetson devices.
-- **Active Learning:** Clinician feedback loop for local handwriting LoRA adaptation.
 
 ---
 
