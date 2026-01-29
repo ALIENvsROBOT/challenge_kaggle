@@ -75,6 +75,26 @@ Raw extractions are normalized into the FHIR R4 schema.
 Raw LLM outputs pass through a rigid, code-based validator.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'background': 'transparent',
+    'primaryColor': '#1e293b',
+    'primaryTextColor': '#ffffff',
+    'primaryBorderColor': '#334155',
+    'lineColor': '#64748b',
+    'secondaryColor': '#f8fafc',
+    'tertiaryColor': '#f1f5f9',
+    'noteBkgColor': '#fef9c3',
+    'noteTextColor': '#1e293b',
+    'actorTextColor': '#ffffff',
+    'signalColor': '#334155',
+    'signalTextColor': '#334155',
+    'labelBoxBkgColor': '#f1f5f9',
+    'labelBoxBorderColor': '#cbd5e1',
+    'loopTextColor': '#1e293b'
+  }
+}}%%
 sequenceDiagram
     participant User
     participant UI as React Dashboard
@@ -85,19 +105,19 @@ sequenceDiagram
     User->>UI: Upload Record (Image/PDF)
     UI->>API: POST /api/v1/ingest
 
-    rect rgb(35, 35, 45)
+    rect rgba(59, 130, 246, 0.1)
     Note over API, LLM: 🧠 Phase 1: Classification (Two-Pass)
     API->>LLM: Identify Modality (Lab/Rad/Meds/Vitals)
     LLM-->>API: Detected Category (e.g., PRESCRIPTION)
     end
 
-    rect rgb(30, 40, 50)
+    rect rgba(16, 185, 129, 0.1)
     Note over API, LLM: 🧪 Phase 2: High-Precision Extraction
     API->>LLM: Specialized Inference (TSV Protocol)
     LLM-->>API: Raw Data (High-Entropy OCR)
     end
 
-    rect rgb(30, 30, 40)
+    rect rgba(100, 116, 139, 0.05)
     Note over API: 🛡️ Phase 3: The "Self-Healing" Auditor
     API->>API: Hybrid Parser (JSON + TSV recovery)
     API->>API: Semantic Firewall (e.g., Platelet Scaling Fix)
@@ -114,7 +134,7 @@ sequenceDiagram
 
     API-->>UI: Render Clinical Standard View
 
-    rect rgb(45, 35, 35)
+    rect rgba(239, 68, 68, 0.1)
     Note over User, LLM: 🤝 Phase 4: Collaborative Synthesis
     User->>UI: Add Clinical Context (Doctor's Notes)
     UI->>API: Update Notes & Trigger Synthesis
