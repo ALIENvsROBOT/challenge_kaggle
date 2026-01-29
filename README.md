@@ -299,9 +299,10 @@ sudo podman run -d --name vllm-medgemma \
 ## 📞 Contact & Submission
 
 **Challenge:** [MedGemma Impact Challenge 2025](https://www.kaggle.com/competitions/medgemma-impact-challenge)  
-**Repository:** [GitHub - Update before submission]  
-**Demo Video:** [YouTube - Update before submission]  
-**Team Contact:** [Your Email/Contact Info]
+**Demo Video:** [YouTube - MedGemma FHIR-Bridge Demo](https://www.youtube.com/watch?v=TzDQ-QYOCz4)  
+**Lead Developer:** Gowtham Sridhar  
+**Email:** [gowtham.sridher5@gmail.com](mailto:gowtham.sridher5@gmail.com)  
+**LinkedIn:** [linkedin.com/in/gowtham-sridher](https://www.linkedin.com/in/gowtham-sridher/)
 
 ---
 
