@@ -78,21 +78,21 @@ Raw LLM outputs pass through a rigid, code-based validator.
 %%{init: {
   'theme': 'base',
   'themeVariables': {
-    'background': '#ffffff',
+    'background': '#0f172a',
     'primaryColor': '#1e293b',
-    'primaryTextColor': '#ffffff',
+    'primaryTextColor': '#f8fafc',
     'primaryBorderColor': '#334155',
     'lineColor': '#64748b',
-    'secondaryColor': '#f8fafc',
-    'tertiaryColor': '#f1f5f9',
+    'secondaryColor': '#1e293b',
+    'tertiaryColor': '#1e293b',
     'noteBkgColor': '#fef9c3',
     'noteTextColor': '#1e293b',
-    'actorTextColor': '#ffffff',
-    'signalColor': '#334155',
-    'signalTextColor': '#334155',
-    'labelBoxBkgColor': '#f1f5f9',
-    'labelBoxBorderColor': '#cbd5e1',
-    'loopTextColor': '#1e293b'
+    'actorTextColor': '#f8fafc',
+    'signalColor': '#94a3b8',
+    'signalTextColor': '#e2e8f0',
+    'labelBoxBkgColor': '#1e293b',
+    'labelBoxBorderColor': '#334155',
+    'loopTextColor': '#f8fafc'
   }
 }}%%
 sequenceDiagram
