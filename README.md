@@ -82,18 +82,19 @@ Raw LLM outputs pass through a rigid, code-based validator.
     'primaryColor': '#1e293b',
     'primaryTextColor': '#ffffff',
     'primaryBorderColor': '#334155',
-    'lineColor': '#cbd5e1',
+    'lineColor': '#475569',
     'secondaryColor': '#1e293b',
     'tertiaryColor': '#1e293b',
     'noteBkgColor': '#fef9c3',
     'noteTextColor': '#0f172a',
     'actorTextColor': '#ffffff',
-    'signalColor': '#cbd5e1',
+    'signalColor': '#475569',
     'signalTextColor': '#ffffff',
-    'labelBoxBkgColor': '#1e293b',
-    'labelBoxBorderColor': '#475569',
+    'labelBoxBkgColor': '#0f172a',
+    'labelBoxBorderColor': '#334155',
     'loopTextColor': '#ffffff',
-    'fontSize': '14px'
+    'fontSize': '14px',
+    'actorBkg': '#1e293b'
   }
 }}%%
 sequenceDiagram
@@ -106,19 +107,19 @@ sequenceDiagram
     User->>UI: Upload Record (Image/PDF)
     UI->>API: POST /api/v1/ingest
 
-    rect rgba(59, 130, 246, 0.1)
+    rect rgba(59, 130, 246, 0.15)
     Note over API, LLM: 🧠 Phase 1: Classification (Two-Pass)
     API->>LLM: Identify Modality (Lab/Rad/Meds/Vitals)
     LLM-->>API: Detected Category (e.g., PRESCRIPTION)
     end
 
-    rect rgba(16, 185, 129, 0.1)
+    rect rgba(16, 185, 129, 0.15)
     Note over API, LLM: 🧪 Phase 2: High-Precision Extraction
     API->>LLM: Specialized Inference (TSV Protocol)
     LLM-->>API: Raw Data (High-Entropy OCR)
     end
 
-    rect rgba(100, 116, 139, 0.05)
+    rect rgba(30, 41, 59, 0.9)
     Note over API: 🛡️ Phase 3: The "Self-Healing" Auditor
     API->>API: Hybrid Parser (JSON + TSV recovery)
     API->>API: Semantic Firewall (e.g., Platelet Scaling Fix)
@@ -135,7 +136,7 @@ sequenceDiagram
 
     API-->>UI: Render Clinical Standard View
 
-    rect rgba(239, 68, 68, 0.1)
+    rect rgba(239, 68, 68, 0.15)
     Note over User, LLM: 🤝 Phase 4: Collaborative Synthesis
     User->>UI: Add Clinical Context (Doctor's Notes)
     UI->>API: Update Notes & Trigger Synthesis
