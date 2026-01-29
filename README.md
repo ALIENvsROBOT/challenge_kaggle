@@ -78,7 +78,7 @@ Raw LLM outputs pass through a rigid, code-based validator.
 %%{init: {
   'theme': 'base',
   'themeVariables': {
-    'background': 'transparent',
+    'background': '#ffffff',
     'primaryColor': '#1e293b',
     'primaryTextColor': '#ffffff',
     'primaryBorderColor': '#334155',
