@@ -76,27 +76,26 @@ Raw LLM outputs pass through a rigid, code-based validator.
 
 ```mermaid
 %%{init: {
-  'theme': 'base',
+  'theme': 'default',
   'themeVariables': {
     'background': '#ffffff',
-    'mainBkg': '#ffffff',
-    'primaryColor': '#e2e8f0',
-    'primaryTextColor': '#0f172a',
-    'primaryBorderColor': '#94a3b8',
-    'lineColor': '#1e293b',
-    'secondaryColor': '#f8fafc',
-    'tertiaryColor': '#f1f5f9',
-    'noteBkgColor': '#fef9c3',
-    'noteTextColor': '#0f172a',
-    'actorTextColor': '#ffffff',
-    'actorBkg': '#1e293b',
-    'actorBorder': '#0f172a',
-    'signalColor': '#1e293b',
-    'signalTextColor': '#0f172a',
+    'primaryColor': '#ffffff',
+    'primaryTextColor': '#000000',
+    'primaryBorderColor': '#000000',
+    'lineColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'tertiaryColor': '#ffffff',
+    'noteBkgColor': '#fff5ad',
+    'noteTextColor': '#000000',
+    'actorBkg': '#ffffff',
+    'actorTextColor': '#000000',
+    'actorBorder': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
     'labelBoxBkgColor': '#ffffff',
-    'labelBoxBorderColor': '#94a3b8',
-    'loopTextColor': '#0f172a',
-    'fontSize': '14px'
+    'labelBoxBorderColor': '#000000',
+    'loopTextColor': '#000000',
+    'fontSize': '16px'
   }
 }}%%
 sequenceDiagram
@@ -106,22 +105,23 @@ sequenceDiagram
     participant LLM as MedGemma vLLM
     participant DB as PostgreSQL
 
+    rect rgb(255, 255, 255)
     User->>UI: Upload Record (Image/PDF)
     UI->>API: POST /api/v1/ingest
 
-    rect rgba(59, 130, 246, 0.15)
+    rect rgb(235, 245, 255)
     Note over API, LLM: 🧠 Phase 1: Classification (Two-Pass)
     API->>LLM: Identify Modality (Lab/Rad/Meds/Vitals)
     LLM-->>API: Detected Category (e.g., PRESCRIPTION)
     end
 
-    rect rgba(16, 185, 129, 0.15)
+    rect rgb(230, 250, 240)
     Note over API, LLM: 🧪 Phase 2: High-Precision Extraction
     API->>LLM: Specialized Inference (TSV Protocol)
     LLM-->>API: Raw Data (High-Entropy OCR)
     end
 
-    rect rgba(100, 116, 139, 0.1)
+    rect rgb(245, 245, 245)
     Note over API: 🛡️ Phase 3: The "Self-Healing" Auditor
     API->>API: Hybrid Parser (JSON + TSV recovery)
     API->>API: Semantic Firewall (e.g., Platelet Scaling Fix)
@@ -138,7 +138,7 @@ sequenceDiagram
 
     API-->>UI: Render Clinical Standard View
 
-    rect rgba(239, 68, 68, 0.15)
+    rect rgb(255, 235, 235)
     Note over User, LLM: 🤝 Phase 4: Collaborative Synthesis
     User->>UI: Add Clinical Context (Doctor's Notes)
     UI->>API: Update Notes & Trigger Synthesis
@@ -148,6 +148,7 @@ sequenceDiagram
     end
 
     UI-->>User: Display AI Diagnostic Partner Insights
+    end
 ```
 
 ---
