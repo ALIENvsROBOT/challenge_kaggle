@@ -240,39 +240,51 @@ backend/
 
 ---
 
-## vLLM MedGemma Configuration
+## 🚀 vLLM MedGemma Configuration
 
-To serve the MedGemma 1.5 model using vLLM in a Podman container on Ubuntu, use the following configuration script. This setup ensures persistent model storage and an OpenAI-compatible API endpoint.
+To serve the **MedGemma 1.5** model using **vLLM**, follow these steps to set up an OpenAI-compatible API endpoint. This configuration supports both **Docker** and **Podman** and ensures persistent model storage.
+
+### 1. Preparation
+
+Set your Hugging Face credentials and define a local directory for model persistence.
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
+# 1) Credentials & Paths
+export HF_TOKEN="your_hf_token_here"
+export VLLM_API_KEY="your-secret-key"
+export MODEL_DIR="$HOME/models/medgemma-1.5-4b-it" # Or any persistent path
 
-###############################################################################
-# vLLM MedGemma 1.5 on Ubuntu (Podman) – OpenAI-compatible API
-# - Downloads model to host dir (persistent)
-# - Runs vLLM serving the local model (so rm/stop container won’t delete weights)
-###############################################################################
-
-# 1) Credentials (set your real values)
-export HF_TOKEN="hf_xxxxxxxxxxxxxxxxxxxxx"
-export VLLM_API_KEY="super-secret-key-change-me"
-
-# 2) Where to store the model on the host (persistent)
-MODEL_DIR="/home/compute/models/medgemma-1.5-4b-it"
+# 2) Download model weights
 mkdir -p "$MODEL_DIR"
-
-# 3) Download model to the host (requires huggingface-cli or python + huggingface_hub)
-export HUGGING_FACE_HUB_TOKEN="$HF_TOKEN"
 huggingface-cli download google/medgemma-1.5-4b-it --local-dir "$MODEL_DIR"
+```
 
-# 4) Stop/remove old container if present (safe; model stays in MODEL_DIR)
-sudo podman stop vllm-medgemma 2>/dev/null || true
-sudo podman rm vllm-medgemma 2>/dev/null || true
+### 2. Deployment Commands
 
-# 5) Run vLLM serving the LOCAL model directory
-sudo podman run -d --name vllm-medgemma \
-  --pull=always \
+#### Option A: Docker
+```bash
+docker run -d --name vllm-medgemma \
+  --runtime nvidia \
+  --gpus all \
+  --restart always \
+  --ipc=host \
+  -p 8001:8000 \
+  -v "$MODEL_DIR":/model \
+  -e VLLM_API_KEY="$VLLM_API_KEY" \
+  vllm/vllm-openai:latest \
+  /model \
+  --served-model-name "google/medgemma-1.5-4b-it" \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --dtype bfloat16 \
+  --max-model-len 8192 \
+  --gpu-memory-utilization 0.90 \
+  --limit-mm-per-prompt '{"image": 8}'
+```
+
+#### Option B: Podman
+```bash
+podman run -d --name vllm-medgemma \
   --restart always \
   --device nvidia.com/gpu=all \
   --security-opt=label=disable \
@@ -288,8 +300,8 @@ sudo podman run -d --name vllm-medgemma \
   --port 8000 \
   --dtype bfloat16 \
   --max-model-len 8192 \
-  --gpu-memory-utilization 0.30 \
-  --limit-mm-per-prompt '{"image": 8}' # Enables Batch Ingestion
+  --gpu-memory-utilization 0.90 \
+  --limit-mm-per-prompt '{"image": 8}'
 ```
 
 ---
